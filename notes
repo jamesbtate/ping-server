@@ -1,0 +1,10 @@
+# create
+rrdtool create test1.rrd -s 1 DS:test1:GAUGE:2:0:999 RRA:LAST:0:1:86400
+
+# graph
+rrdtool graph /var/www/html/ping/test1.png -s -10min -l 0 -w 600 -h 300 DEF:a=test1.rrd:test1:AVERAGE LINE2:a#0055ff GPRINT:a:LAST:"Current\: %lf\n" GPRINT:a:AVERAGE:"Average\: %lf\n" GPRINT:a:MAX:"Maximum\: %lf"
+
+# graph with red area where there is no data
+rrdtool graph /var/www/html/ping/test1.png -s -60min -l 0 -w 600 -h 300 DEF:a=test1.rrd:test1:AVERAGE LINE2:a#0055ff GPRINT:a:LAST:"Current\: %lf\n" GPRINT:a:AVERAGE:"Average\: %lf\n" GPRINT:a:MAX:"Maximum\: %lf" CDEF:unavailable=a,UN,INF,0,IF AREA:unavailable#cc3333
+
+rrdtool graph /var/www/html/ping/ns1.png -s -60min -l 0 -w 600 -h 300 DEF:a=ns1.rrd:ping:AVERAGE LINE2:a#0055ff GPRINT:a:LAST:"Current\: %lf" GPRINT:a:AVERAGE:"Average\: %lf" GPRINT:a:MIN:"Minimum\: %lf" GPRINT:a:MAX:"Maximum\: %lf" CDEF:unavailable=a,UN,INF,0,IF AREA:unavailable#cc3333
