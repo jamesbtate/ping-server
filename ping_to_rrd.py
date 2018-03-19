@@ -40,6 +40,9 @@ try:
             if args.verbose: print("response", results.avg_rtt, "ms")
             rrdtool.update(args.rrdfile, "N:" + str(results.avg_rtt))
             received += 1
+        else:
+            for line in results.output:
+                print(line)
         current = time.time()
         should = start + seconds
         if should > current:
