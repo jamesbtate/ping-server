@@ -9,7 +9,7 @@
 
     Bugs are naturally mine. I'd be glad to hear about them. There are
     certainly word - size dependencies here.
-    
+
     :homepage: https://github.com/socketubs/Pyping/
     :copyleft: 1989-2011 by the python-ping team, see AUTHORS for more details.
     :license: GNU GPL v2, see LICENSE for more details.
@@ -211,7 +211,7 @@ class Ping(object):
         lost_rate = float(lost_count) / self.send_count * 100.0
 
         msg = "%d packets transmitted, %d packets received, %0.1f%% packet loss" % (self.send_count, self.receive_count, lost_rate)
-    
+
         if self.quiet_output:
             self.response.output.append(msg)
             self.response.packet_lost = lost_count
@@ -255,7 +255,7 @@ class Ping(object):
     def setup_signal_handler(self):
         signal.signal(signal.SIGINT, self.signal_handler)   # Handle Ctrl-C
         if hasattr(signal, "SIGBREAK"):
-            # Handle Ctrl-Break e.g. under Windows 
+            # Handle Ctrl-Break e.g. under Windows
             signal.signal(signal.SIGBREAK, self.signal_handler)
 
     #--------------------------------------------------------------------------
@@ -432,3 +432,6 @@ class Ping(object):
 def ping(hostname, timeout=1000, count=3, packet_size=55, *args, **kwargs):
     p = Ping(hostname, timeout, packet_size, *args, **kwargs)
     return p.run(count)
+
+if __name__=='__main__':
+    ping('8.8.8.8')
