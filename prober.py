@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 """
+Pings multiple hosts and forwards the results to a websocket server.
+
 Largely based on pyping.py from
     https://github.com/Akhavi/pyping/blob/master/pyping/core.py
 
@@ -8,10 +10,15 @@ Note that ICMP messages can only be sent from processes running as root
 GNU GPL v2 license  -  see LICENSE
 """
 
+import websockets
+import threading
+import asyncio
 import select
 import signal
 import socket
 import struct
+import queue
+import json
 import time
 import sys
 import os
@@ -20,8 +27,10 @@ import os
 ICMP_ECHOREPLY = 0  # Echo reply (per RFC792)
 ICMP_ECHO = 8  # Echo request (per RFC792)
 ICMP_MAX_RECV = 2048  # Max size of incoming buffer
-
 MAX_SLEEP = 1000
+
+output_queue = None
+keep_going = True
 
 
 def calculate_checksum(source_string):
@@ -84,27 +93,11 @@ def to_ip(addr):
     return socket.gethostbyname(addr)
 
 
-class Response(object):
-    def __init__(self):
-        self.max_rtt = None
-        self.min_rtt = None
-        self.avg_rtt = None
-        self.send_count = None
-        self.packet_lost = None
-        self.ret_code = None
-        self.ttl = None
-        self.output = []
-
-        self.packet_size = None
-        self.timeout = None
-        self.destination = None
-        self.destination_ip = None
-
-
-class Ping(object):
-    def __init__(self, destinations, timeout=500, packet_size=55, own_id=None,
-                 sourceaddress=False):
+class Pinger(object):
+    def __init__(self, destinations,  timeout=500, packet_size=55,
+                 output=sys.stdout, own_id=None, sourceaddress=False):
         self.destinations = [socket.gethostbyname(_) for _ in destinations]
+        self.output = output
         self.timeout = timeout
         self.packet_size = packet_size
         if sourceaddress is not False:
@@ -117,18 +110,6 @@ class Ping(object):
         self.seq_number = 0
         self.send_count = 0
         self.receive_count = 0
-
-    def signal_handler(self, signum, frame):
-        """ Handle exit via signals """
-        msg = "\n(Terminated with signal %d)\n" % (signum)
-        print(msg)
-        sys.exit(0)
-
-    def setup_signal_handler(self):
-        signal.signal(signal.SIGINT, self.signal_handler)   # Handle Ctrl-C
-        if hasattr(signal, "SIGBREAK"):
-            # Handle Ctrl-Break e.g. under Windows
-            signal.signal(signal.SIGBREAK, self.signal_handler)
 
     def header2dict(self, names, struct_format, data):
         """
@@ -156,19 +137,19 @@ class Ping(object):
 
     def run(self):
         """ send and receive pings """
-        self.setup_signal_handler()
+        # self.setup_signal_handler()
         start_time = time.time()
         iteration = 0
         current_socket = self.make_raw_socket()
 
-        while True:
+        while keep_going:
             iteration += 1
             send_time = time.time()
             for destination in self.destinations:
                 self.send_one_ping(current_socket, destination)
 
             replies = self.receive_pings(current_socket, self.destinations)
-            self.enqueue_replies(send_time, replies)
+            self.handle_output(send_time, replies)
 
             self.seq_number += 1
             if self.seq_number > 65535:
@@ -270,22 +251,85 @@ class Ping(object):
             timeout = max_time - (time.time() - start_time)
             if timeout <= 0 or len(destinations_remaining) == 0:
                 break
+        for ip in destinations_remaining:
+            replies.append((ip, None))
         return replies
 
-    def enqueue_replies(self, send_time, replies):
-        # for preliminary testing, just print the results
+    def handle_output(self, send_time, replies):
+        if self.output == sys.stdout:
+            self.print_output(send_time, replies)
+        else:
+            data = {'type': 'output', 'send_time': send_time,
+                    'replies': replies}
+            self.output.put(data)
+
+    def print_output(self, send_time, replies):
         if len(replies) == 0:
             print("No replies")
         for reply in replies:
-            millis = (reply[1] - send_time) * 1000
-            print("reply from {0} in {1:.1f} ms".format(reply[0], millis))
+            if reply[1] is None:
+                print("no reply from {0}".format(reply[0]))
+            else:
+                millis = (reply[1] - send_time) * 1000
+                print("reply from {0} in {1:.1f} ms".format(reply[0], millis))
 
 
-def ping(hosts, timeout=500, packet_size=55, *args, **kwargs):
-    p = Ping(hosts, timeout, packet_size, *args, **kwargs)
+def ping(timeout=500, packet_size=55, *args, **kwargs):
+    hosts = ('192.168.5.5', '192.168.5.18', '8.8.8.8', 'ucla.edu')
+    p = Pinger(hosts, timeout, packet_size, *args, **kwargs)
     p.run()
 
 
+def _ping(hosts, output):
+    p = Pinger(hosts, output=output)
+    p.run()
+
+
+@asyncio.coroutine
+def transmit_loop():
+    while keep_going:
+        url = 'ws://localhost:8765/'
+        print("Connecting to websocket:", url)
+        websocket = yield from websockets.connect(url)
+        try:
+            while keep_going:
+                try:
+                    data = output_queue.get(timeout=0.5)
+                except queue.Empty as e:
+                    continue
+                yield from websocket.send(json.dumps(data))
+        except Exception as e:
+            print("Exception in transmit loop:", str(e))
+
+
+def signal_handler(signum, frame):
+    """ Handle exit via signals """
+    global keep_going
+    msg = "\n(Terminated with signal %d)\n" % (signum)
+    print(msg)
+    keep_going = False
+    event_loop.stop()
+    # sys.exit(0)
+
+
+def setup_signal_handler():
+    signal.signal(signal.SIGINT, signal_handler)   # Handle Ctrl-C
+    if hasattr(signal, "SIGBREAK"):
+        # Handle Ctrl-Break e.g. under Windows
+        signal.signal(signal.SIGBREAK, signal_handler)
+
+
 if __name__ == '__main__':
-    print("Directly executing this code is for testing only.")
-    ping(('192.168.5.5', '192.168.5.18', '8.8.8.8', 'ucla.edu'))
+    setup_signal_handler()
+    output_queue = queue.Queue()
+    event_loop = asyncio.get_event_loop()
+    # ping(('192.168.5.5', '192.168.5.18', '8.8.8.8', 'ucla.edu'))
+    hosts = ('192.168.5.5', '192.168.5.18', '8.8.8.8', 'ucla.edu', '1.2.3.4')
+    args = (hosts, output_queue)
+    ping_thread = threading.Thread(target=_ping, args=args)
+    print("Starting ping thread")
+    ping_thread.start()
+    print("Starting event loop")
+    # asyncio.get_event_loop().run_until_complete(transmit_loop())
+    event_loop.create_task(transmit_loop())
+    event_loop.run_forever()
