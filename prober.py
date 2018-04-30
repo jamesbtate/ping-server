@@ -10,6 +10,7 @@ Note that ICMP messages can only be sent from processes running as root
 GNU GPL v2 license  -  see LICENSE
 """
 
+import configparser
 import websockets
 import threading
 import asyncio
@@ -320,6 +321,8 @@ def setup_signal_handler():
 
 
 if __name__ == '__main__':
+    parser = configparser.ConfigParser(allow_no_value=True)
+    parser.read('ping.conf')
     setup_signal_handler()
     output_queue = queue.Queue()
     event_loop = asyncio.get_event_loop()
