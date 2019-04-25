@@ -13,3 +13,7 @@ class Database(ABC):
     @abstractmethod
     def get_src_dst_pairs(self):
         pass
+
+    @abstractmethod
+    def get_poll_counts_by_pair(self):
+        pass

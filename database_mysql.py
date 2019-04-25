@@ -3,19 +3,16 @@
 Database abstraction layer
 """
 
-from abc import ABC, abstractmethod
 import mysql.connector
 from database import Database
-from server import read_config
 
 
 class DatabaseMysql(Database):
-    def __init__(self):
+    def __init__(self, db_params):
         self.connection = None
         self.cursor = None
         super().__init__()
-        parser = read_config()
-        self.db_params = parser['server']
+        self.db_params = db_params
         self._connect_db()
 
     def _connect_db(self):
@@ -30,4 +27,11 @@ class DatabaseMysql(Database):
         query = "SELECT id,INET_NTOA(src) AS src,INET_NTOA(dst) AS dst FROM src_dst"
         self.cursor.execute(query)
         rows = self.cursor.fetchall()
+        return rows
+
+    def get_poll_counts_by_pair(self):
+        query = "SELECT src_dst,count(*) AS count FROM output GROUP BY src_dst"
+        self.cursor.execute(query)
+        rows = self.cursor.fetchall()
+        self.connection.commit()
         return rows
