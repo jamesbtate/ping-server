@@ -1,0 +1,20 @@
+<html>
+<head>
+<title>Ping Dashboard</title>
+</head>
+<body>
+<h1>Ping Dashboard</h1>
+<h3>Source-Destination Pairs</h3>
+<table>
+    <tr><th>ID</th><th>Source IP</th><th>Destination IP</th><th>Polls</th></tr>
+    {% for pair in src_dst_pairs %}
+        <tr>
+            <td>{{ pair.id }}</td>
+            <td>{{ pair.src }}</td>
+            <td>{{ pair.dst }}</td>
+            <td>{{ pair.polls }}</td>
+        </tr>
+    {% endfor %}
+</table>
+</body>
+</html>
