@@ -11,10 +11,13 @@ import queue
 import json
 
 
-logger = logging.getLogger('websockets.server')
-logger.setLevel(logging.ERROR)
-logger.addHandler(logging.StreamHandler())
 db_queue = None
+
+
+def read_config():
+    parser = configparser.ConfigParser(allow_no_value=True)
+    parser.read('ping.conf')
+    return parser
 
 
 def handle_message_string(remote_addr, message_string):
@@ -44,12 +47,15 @@ def listen(websocket, path):
                      remote_addr[1])
 
 
-if __name__ == '__main__':
+def main():
+    global db_queue
+    logger = logging.getLogger('websockets.server')
+    logger.setLevel(logging.ERROR)
+    logger.addHandler(logging.StreamHandler())
     log_format = '%(asctime)s %(levelname)s:%(module)s:%(funcName)s ' \
-                  + '%(message)s'
+                 + '%(message)s'
     logging.basicConfig(format=log_format, level=logging.INFO)
-    parser = configparser.ConfigParser(allow_no_value=True)
-    parser.read('ping.conf')
+    parser = read_config()
     db_queue = queue.Queue()
     listen_ip = parser['server']['ws_address']
     listen_port = int(parser['server']['ws_port'])
@@ -59,3 +65,7 @@ if __name__ == '__main__':
     writer.start()
     asyncio.get_event_loop().run_until_complete(server)
     asyncio.get_event_loop().run_forever()
+
+
+if __name__ == '__main__':
+    main()
