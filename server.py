@@ -43,8 +43,8 @@ def listen(websocket, path):
             message_string = yield from websocket.recv()
             handle_message_string(remote_addr, message_string)
     except websockets.exceptions.ConnectionClosed as e:
-        logging.info("Connection from %s:%s closed", remote_addr[0],
-                     remote_addr[1])
+        logging.info("Connection from %s:%s closed: %s", remote_addr[0],
+                     remote_addr[1], str(e))
 
 
 def main():
