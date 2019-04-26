@@ -4,6 +4,7 @@ Database abstraction layer
 """
 
 from abc import ABC, abstractmethod
+import time
 
 
 class Database(ABC):
@@ -16,4 +17,10 @@ class Database(ABC):
 
     @abstractmethod
     def get_poll_counts_by_pair(self):
+        pass
+
+    @abstractmethod
+    def get_poll_data_by_pair(self, pair_id,
+                              start=time.time()-3600,
+                              stop=time.time()):
         pass

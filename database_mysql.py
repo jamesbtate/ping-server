@@ -4,6 +4,8 @@ Database abstraction layer
 """
 
 import mysql.connector
+import time
+
 from database import Database
 
 
@@ -23,6 +25,19 @@ class DatabaseMysql(Database):
         self.connection = c
         self.cursor = self.connection.cursor(dictionary=True)
 
+    @staticmethod
+    def time_to_mysql(t):
+        """ Convert time struct to MySQL format. """
+        if type(t) == float or type(t) == int:
+            t = time.localtime(t)
+        return time.strftime('%Y-%m-%d %H:%M:%S', t)
+
+    def execute_fetchall_commit(self, query, params=None):
+        self.cursor.execute(query, params)
+        rows = self.cursor.fetchall()
+        self.connection.commit()
+        return rows
+
     def get_src_dst_pairs(self):
         query = "SELECT id,INET_NTOA(src) AS src,INET_NTOA(dst) AS dst FROM src_dst"
         self.cursor.execute(query)
@@ -34,4 +49,16 @@ class DatabaseMysql(Database):
         self.cursor.execute(query)
         rows = self.cursor.fetchall()
         self.connection.commit()
+        return rows
+
+    def get_poll_data_by_pair(self, pair_id,
+                              start=time.time() - 3601,
+                              stop=time.time()):
+        query = "SELECT time,latency FROM output WHERE src_dst=%s AND time > %s AND time < %s"
+        if not type(pair_id) is int:
+            raise TypeError("pair_id must be an integer.")
+        params = (pair_id,
+                  DatabaseMysql.time_to_mysql(start),
+                  DatabaseMysql.time_to_mysql(stop))
+        rows = self.execute_fetchall_commit(query, params)
         return rows
