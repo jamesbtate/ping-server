@@ -6,14 +6,16 @@ import graphing
 import time
 import server
 import database_mysql
+import matplotlib
 
 
 def test1():
-    points = [(1400, 100), (1401, 101), (1402, 100), (1403, 102)]
+    # points = [(1400, 100), (1401, 101), (1402, 100), (1403, 102)]
     times = [1400, 1401, 1402, 1403]
     values = [100, 101, 100, 102]
     figure = graphing.ping_figure(times, values)
     figure.show()
+
 
 def test2():
     config = server.read_config()['server']
@@ -22,7 +24,7 @@ def test2():
     times = [_['time'] for _ in data]
     values = [_['latency'] for _ in data]
     figure = graphing.ping_figure(times, values)
-    figure.show()
+    matplotlib.pyplot.show()
 
 
 if __name__ == '__main__':
