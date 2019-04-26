@@ -24,10 +24,14 @@ def handle_message_string(remote_addr, message_string):
     message = json.loads(message_string)
     logging.debug("message from %s: %s", remote_addr[0], message)
     if 'type' not in message:
-        logging.warning("Message from %s has no type", remote_addr)
+        logging.warning("Message from %s has no type. Discarding.", remote_addr)
+    elif 'id' not in message:
+        logging.warning("Message from %s has no id. Discarding.", remote_addr)
     elif message['type'] == 'output':
         message['remote_ip'] = remote_addr[0]
         db_queue.put(message)
+        logging.debug("Enqueued message from %s. ID: %i", remote_addr, message['id'])
+        return message['id']
     else:
         logging.warning("Unknown message from %s type: %s", remote_addr,
                         message['type'])
@@ -41,7 +45,9 @@ def listen(websocket, path):
                      remote_addr[1])
         while True:
             message_string = yield from websocket.recv()
-            handle_message_string(remote_addr, message_string)
+            message_id = handle_message_string(remote_addr, message_string)
+            response = json.dumps({'status': 'enqueued', 'id': message_id})
+            yield from websocket.send(response)
     except websockets.exceptions.ConnectionClosed as e:
         logging.info("Connection from %s:%s closed: %s", remote_addr[0],
                      remote_addr[1], str(e))
@@ -52,7 +58,7 @@ def main():
     logger = logging.getLogger('websockets.server')
     logger.setLevel(logging.ERROR)
     logger.addHandler(logging.StreamHandler())
-    log_format = '%(asctime)s %(levelname)s:%(module)s:%(funcName)s ' \
+    log_format = '%(asctime)s %(levelname)s:%(module)s:%(funcName)s# ' \
                  + '%(message)s'
     logging.basicConfig(format=log_format, level=logging.INFO)
     parser = read_config()

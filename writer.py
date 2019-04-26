@@ -75,5 +75,5 @@ class Writer(threading.Thread):
                 message = self.db_queue.get(timeout=0.5)
             except queue.Empty as e:
                 continue
-            logging.debug("writerqueued message for writing")
+            logging.debug("writer queued message for writing")
             self.store_output(message)
