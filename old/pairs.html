@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Source-Target Pairs</title>
+  <link rel="stylesheet" href="/static/style.css" type="text/css">
+  </head>
+  <body>
+   <table>
+    <tr><th>ID</th><th>Source</th><th>Target</th></tr>
+    {% for pair in pairs %}
+     <tr>
+         <td>{{(pair.0)}}</td>
+         <td>{{pair.1}}</td>
+         <td>{{pair.2}}</td></tr>
+    {% endfor %}
+   </table>
+  </body>
+</html>
