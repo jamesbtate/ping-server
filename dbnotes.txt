@@ -1,0 +1,15 @@
+2 bytes unsigned response time = 65535 possible values (0-65534), plus one failure value (65535)
+	1 second window gives resolution of 1/65535 = 0.000015...seconds = 0.015ms
+		this is plenty of resolution. Will probably end up rounding to 0.1ms
+4 bytes for timestamp
+2 bytes for source-dest foreign key
+16 bytes total for overhead factor 2x
+one day's storage for one source-dest, polling every second:
+	86400*16 = 1382400 = 1.3MB
+storage for 100 source-dest pairs for 30 days:
+	1382400 * 30 * 100 = 4147200000 = 4147MB
+
+source-destination pairs will be stored in separate table.
+2 byte key gives 65536 possible combinations.
+3 bytes key is 16.8 million possible combinations.
+

@@ -5,6 +5,7 @@ Listens for connections from transmitters and saves ping ouput in DB.
 from writer import Writer
 import configparser
 import websockets
+import argparse
 import asyncio
 import logging
 import queue
@@ -53,21 +54,37 @@ def listen(websocket, path):
                      remote_addr[1], str(e))
 
 
+def parse_args():
+    description = "Record ping results to some database."
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('-f', '--foreground', action='store_true',
+                        help="Run in foreground and log to stderr.")
+    args = parser.parse_args()
+    return args
+
+
 def main():
     global db_queue
+    args = parse_args()
     logger = logging.getLogger('websockets.server')
     logger.setLevel(logging.ERROR)
     logger.addHandler(logging.StreamHandler())
+    config_parser = read_config()
     log_format = '%(asctime)s %(levelname)s:%(module)s:%(funcName)s# ' \
                  + '%(message)s'
-    logging.basicConfig(format=log_format, level=logging.INFO)
-    parser = read_config()
+    log_level = logging.INFO
+    if args.foreground:
+        logging.basicConfig(format=log_format, level=log_level)
+    else:
+        log_filename = config_parser['server']['log_file']
+        logging.basicConfig(filename=log_filename, format=log_format,
+                            level=log_level)
     db_queue = queue.Queue()
-    listen_ip = parser['server']['ws_address']
-    listen_port = int(parser['server']['ws_port'])
+    listen_ip = config_parser['server']['ws_address']
+    listen_port = int(config_parser['server']['ws_port'])
     server = websockets.serve(listen, listen_ip, listen_port)
     logging.info("Started listening on %s:%s", listen_ip, str(listen_port))
-    writer = Writer(db_queue, parser['server'])
+    writer = Writer(db_queue, config_parser['server'])
     writer.start()
     asyncio.get_event_loop().run_until_complete(server)
     asyncio.get_event_loop().run_forever()

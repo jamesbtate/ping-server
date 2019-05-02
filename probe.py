@@ -13,6 +13,7 @@ GNU GPL v2 license  -  see LICENSE
 import configparser
 import websockets
 import threading
+import argparse
 import asyncio
 import logging
 import random
@@ -262,7 +263,7 @@ class Pinger(object):
                 else:
                     logging.warning("Received bad ICMP header")
             else:
-                logging.warning("Response came from unexpected IP: %s", address[0])
+                logging.debug("Received ICMP packet from unexpected IP: %s", address[0])
             timeout = max_time - (time.time() - start_time)
             if timeout <= 0 or len(destinations_remaining) == 0:
                 break
@@ -302,13 +303,18 @@ def _ping(hosts, output):
 
 
 @asyncio.coroutine
-def transmit_loop():
+def transmit_loop(config_parser):
     # generate
     id = random.randint(0, 2**40)
     while keep_going:
-        url = 'ws://localhost:8765/'
+        url = config_parser['probe']['ws_url']
         logging.info("Connecting to websocket: %s", url)
-        websocket = yield from websockets.connect(url)
+        try:
+            websocket = yield from websockets.connect(url)
+        except OSError as e:
+            logging.error("Error connecting to websocket: %s", str(e))
+            yield from asyncio.sleep(10)
+            continue
         try:
             while keep_going:
                 logging.debug("Waiting for data to transmit")
@@ -351,15 +357,30 @@ def setup_signal_handler():
         # Handle Ctrl-Break e.g. under Windows
         signal.signal(signal.SIGBREAK, signal_handler)
 
+def parse_args():
+    description = "Ping stuff and send the responses to a recording server."
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('-f', '--foreground', action='store_true',
+                        help="Run in foreground and log to stderr.")
+    args = parser.parse_args()
+    return args
+
 
 def main():
     global output_queue
     global event_loop
+    args = parse_args()
     log_format = '%(asctime)s %(levelname)s:%(module)s:%(funcName)s# ' \
                  + '%(message)s'
-    logging.basicConfig(format=log_format, level=logging.INFO)
-    parser = configparser.ConfigParser(allow_no_value=True)
-    parser.read('ping.conf')
+    config_parser = configparser.ConfigParser(allow_no_value=True)
+    config_parser.read('ping.conf')
+    log_level = logging.INFO
+    if args.foreground:
+        logging.basicConfig(format=log_format, level=log_level)
+    else:
+        log_filename = config_parser['probe']['log_file']
+        logging.basicConfig(filename=log_filename, format=log_format,
+                            level=log_level)
     setup_signal_handler()
     output_queue = queue.Queue()
     event_loop = asyncio.get_event_loop()
@@ -369,7 +390,7 @@ def main():
     logging.info("Starting ping thread")
     ping_thread.start()
     logging.info("Starting event loop")
-    event_loop.create_task(transmit_loop())
+    event_loop.create_task(transmit_loop(config_parser))
     event_loop.run_forever()
 
 
