@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 """
 Listens for connections from transmitters and saves ping ouput in DB.
 """

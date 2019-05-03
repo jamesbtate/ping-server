@@ -24,8 +24,19 @@ def test2():
     times = [_['time'] for _ in data]
     values = [_['latency'] for _ in data]
     figure = graphing.ping_figure(times, values)
+    return figure
+
+
+def test2a():
+    test2()
     matplotlib.pyplot.show()
 
 
+def test3():
+    figure = test2()
+    b64_src = graphing.figure_to_base64(figure)
+
+
+
 if __name__ == '__main__':
-    test2()
+    test3()

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 """
 Webserver for this application...
 """
@@ -28,12 +28,20 @@ def index():
     return render_template("index.html", **data)
 
 
+@app.route("/graph")
+def graph():
+    config = server.read_config()['server']
+    data = db.get_poll_data_by_pair(1)
+    times = [_['time'] for _ in data]
+    values = [_['latency'] for _ in data]
+    figure = graphing.ping_figure(times, values)
+
 def main():
     global app
     global db
     db_params = read_config()['server']
     db = DatabaseMysql(db_params)
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
 
 
 if __name__ == '__main__':

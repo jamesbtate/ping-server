@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 """
 Database abstraction layer
 """
@@ -23,7 +23,8 @@ class DatabaseMysql(Database):
         c = mysql.connector.connect(user=self.db_params['db_user'],
                                     password=self.db_params['db_pass'],
                                     host=self.db_params['db_host'],
-                                    database=self.db_params['db_db'])
+                                    database=self.db_params['db_db'],
+                                    charset='utf8')
         self.connection = c
         self.cursor = self.connection.cursor(dictionary=True)
 

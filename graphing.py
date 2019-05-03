@@ -4,6 +4,8 @@ Functions for generating graphs of the ping data
 
 import matplotlib.pyplot as plt
 import numpy as np
+import base64
+import io
 
 
 def ping_figure(time_array, value_array, label=None):
@@ -16,4 +18,8 @@ def ping_figure(time_array, value_array, label=None):
 
 def figure_to_base64(figure):
     """ Save a figure as a base64-encoded PNG suitable for an HTML <img> """
-    todo = 1
+    bytes_io = io.BytesIO()
+    figure.savefig(bytes_io, format="png")
+    b64_figure = base64.b64encode(bytes_io.getbuffer())
+    output = str.format("data:image/jpeg;charset=utf-8;base64, %s", b64_figure)
+    return output

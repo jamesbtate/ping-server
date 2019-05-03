@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 """
 Pings multiple hosts and forwards the results to a websocket server.
 

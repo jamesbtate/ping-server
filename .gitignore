@@ -6,3 +6,4 @@ nohup.out
 !default.conf
 .idea/
 *.log
+venv/
