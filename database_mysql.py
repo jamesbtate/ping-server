@@ -24,7 +24,8 @@ class DatabaseMysql(Database):
                                     password=self.db_params['db_pass'],
                                     host=self.db_params['db_host'],
                                     database=self.db_params['db_db'],
-                                    charset='utf8')
+                                    charset='utf8'
+                                    )
         self.connection = c
         self.cursor = self.connection.cursor(dictionary=True)
 
@@ -42,10 +43,21 @@ class DatabaseMysql(Database):
         return rows
 
     def get_src_dst_pairs(self):
-        query = "SELECT id,INET_NTOA(src) AS src,INET_NTOA(dst) AS dst FROM src_dst"
+        query = "SELECT id,INET_NTOA(src) AS src,INET_NTOA(dst) AS dst " + \
+                "FROM src_dst"
         self.cursor.execute(query)
         rows = self.cursor.fetchall()
         return rows
+
+    def get_src_dst_by_id(self, id):
+        """ Gets a source-destination pair from the database by ID number. """
+        query = "SELECT id,INET_NTOA(src) AS src,INET_NTOA(dst) AS dst " + \
+                "FROM src_dst WHERE id=%s"
+        self.cursor.execute(query, (id,))
+        rows = self.cursor.fetchall()
+        if not rows:
+            raise ValueError("No source-destination pair with ID# " + str(id))
+        return rows[0]
 
     def src_dst_id(self, src, dst):
         """ Gets the ID of the src-dst pair from the DB, maybe creating the entry.
@@ -88,6 +100,9 @@ class DatabaseMysql(Database):
 
             Returns a list of rows from the database.
             Each row is a mapping with keys 'time' and 'latency'.
+            The time is Python time object.
+            The latency is the number of seconds latency (float).
+            A latency value of None indicates a timeout.
         """
         if stop is None:
             stop = time.time()
@@ -100,6 +115,8 @@ class DatabaseMysql(Database):
                   DatabaseMysql.time_to_mysql(start),
                   DatabaseMysql.time_to_mysql(stop))
         rows = self.execute_fetchall_commit(query, params)
+        for row in rows:
+            row['latency'] = Database.short_latency_to_seconds(row['latency'])
         return rows
 
     def record_poll_data(self, src_ip, dst_ip, send_time, receive_time):

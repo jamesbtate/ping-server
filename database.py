@@ -35,12 +35,37 @@ class Database(ABC):
                 short_latency = 65535  # treat >1000ms replies as timeouts
         return short_latency
 
+    @staticmethod
+    def short_latency_to_seconds(short):
+        """ Converts an unsigned short [0,65535] to float in [0.0,1.0] or None
+
+        short - unsigned integer in [0,65535]
+
+        Used to store latency values of 0-1 seconds in a 2-byte field.
+        0 => 0.0, 655 => 0.01, 32767 => 0.5
+        65535 => None (the magic value for timeout)
+        Any other value of input throws an exception.
+
+        Returns a float in [0.0,1.0] or None.
+        """
+        if type(short) is not int:
+            raise TypeError("Argument must be an integer in [0,65535]")
+        if short == 65535:
+            return None
+        if short < 0 or short > 65535:
+            raise ValueError("Argument must be an integer in [0,65535]")
+        return short / 65534.0
+
     @abstractmethod
     def src_dst_id(self, src, dst):
         pass
 
     @abstractmethod
     def get_src_dst_pairs(self):
+        pass
+
+    @abstractmethod
+    def get_src_dst_by_id(self, id):
         pass
 
     @abstractmethod
