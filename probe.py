@@ -109,7 +109,7 @@ class Pinger(object):
         if sourceaddress is not False:
             self.sourceaddress = socket.gethostbyname(sourceaddress)
         if own_id is None:
-            self.own_id = os.getpid() & 0xFFFF
+            self.own_id = os.getpid() & 0xFFFF  # just the 2 low-order bytes
         else:
             self.own_id = own_id
 
@@ -261,7 +261,8 @@ class Pinger(object):
                     replies.append((ip, receive_time))
                     destinations_remaining.remove(ip)
                 else:
-                    logging.warning("Received bad ICMP header")
+                    logging.debug("Received ICMP message from valid "
+                                  "destination with invalid header.")
             else:
                 logging.debug("Received ICMP packet from unexpected IP: %s", address[0])
             timeout = max_time - (time.time() - start_time)
