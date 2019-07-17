@@ -8,3 +8,4 @@ nohup.out
 *.log
 venv/
 *.data
+data/

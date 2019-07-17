@@ -5,10 +5,10 @@ A distributed application for running constant pings against hosts and logging t
 ## Usage
 1. Create a database and user for the ping recorder.
     ```
-    create database ping
-    create user ping@localhost identified by 'abcd1234'
-    grant all on ping.* to ping@localhost
-    flush privileges
+    create database ping;
+    create user ping@localhost identified by 'abcd1234';
+    grant all on ping.* to ping@localhost;
+    flush privileges;
     ```
 2. Import the database schema (only on the server).
   1. mysql *database* < schema.sql

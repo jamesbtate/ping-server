@@ -37,6 +37,7 @@ class DatabaseMysql(Database):
         return time.strftime('%Y-%m-%d %H:%M:%S', t)
 
     def execute_fetchall_commit(self, query, params=None):
+        """ I don't know why this is needed? Why commit after a fetch ?!? """
         self.cursor.execute(query, params)
         rows = self.cursor.fetchall()
         self.connection.commit()
@@ -130,3 +131,35 @@ class DatabaseMysql(Database):
         self.cursor.execute(query, params)
         self.connection.commit()
 
+
+    def get_binary_src_dst_pairs(self):
+        query = "SELECT id, INET_NTOA(src) AS src, INET_NTOA(dst) AS dst, " + \
+                "binary_file FROM binary_src_dst"
+        self.cursor.execute(query)
+        rows = self.cursor.fetchall()
+        return rows
+
+    def get_binary_src_dst_by_id(self, id):
+        pass
+
+    def get_binary_src_dst_by_pair(self, src_ip, dst_ip):
+        params = (src_ip, dst_ip)
+        query = "SELECT * FROM binary_src_dst WHERE src=INET_ATON(%s) \
+                 AND dst=INET_ATON(%s)"
+        self.cursor.execute(query, params)
+        result = self.cursor.fetchone()
+        return result
+
+    def make_binary_src_dst_pair(self, src, dst, binary_file):
+        """ Make an entry in the database for a src-dst pair with data file.
+
+        Args:
+        binary_file: path to data file
+        """
+        query = "INSERT INTO binary_src_dst (src,dst,binary_file) VALUES \
+                 (INET_ATON(%s), INET_ATON(%s), %s)"
+        params = (src, dst, binary_file)
+        self.cursor.execute(query, params)
+        self.connection.commit()
+        pair_id = self.cursor.lastrowid
+        return pair_id

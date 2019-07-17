@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Listens for connections from transmitters and saves ping ouput in DB.
+Listens for connections from transmitters and saves ping output in DB.
 """
 from writer import Writer
 import configparser
