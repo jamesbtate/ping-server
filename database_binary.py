@@ -23,9 +23,9 @@ class DatabaseBinary(Database):
     def get_src_dst_pairs(self):
         return self.databaseMysql.get_binary_src_dst_pairs()
 
-    def get_src_dst_by_id(self, id):
+    def get_src_dst_by_id(self, pair_id):
         """ Gets a source-destination pair from the database by ID number. """
-        pass
+        return self.databaseMysql.get_binary_src_dst_by_id(pair_id)
 
     def src_dst_id(self, src, dst):
         """ Gets the ID of the src-dst pair from the DB, maybe creating the entry.
@@ -36,17 +36,21 @@ class DatabaseBinary(Database):
         Returns the ID of src-dst pair. """
         pass
 
-    def get_data_file_handle(self, src, dst):
+    def get_data_file_handle(self, id):
         """ Get a handle to the data file, opened for binary writing.
 
-            Uses the cache of handles in self.src_dst_handles. If the file
+            Uses a cache of datafile handles If the file
             is not already open, open it.
+
+            This may be a bad idea for reads. Maybe reads should always be
+            fresh by opening the file and reading it entirely immediately.
         """
+        pass
 
     def get_poll_counts_by_pair(self):
         pass
 
-    def get_poll_data_by_pair(self, pair_id, start=None, stop=None):
+    def get_poll_data_by_id(self, pair_id, start=None, end=None):
         """ Get poll data from DB for specific src_dst pair.
 
             Optionally specify the time window with epoch numbers
@@ -58,22 +62,13 @@ class DatabaseBinary(Database):
             The latency is the number of seconds latency (float).
             A latency value of None indicates a timeout.
         """
-        if stop is None:
-            stop = time.time()
+        if end is None:
+            end = time.time()
         if start is None:
-            start = stop - 3601
-        """
-        query = "SELECT time,latency FROM output WHERE src_dst=%s AND time > %s AND time < %s"
-        if not type(pair_id) is int:
-            raise TypeError("pair_id must be an integer.")
-        params = (pair_id,
-                  DatabaseMysql.time_to_mysql(start),
-                  DatabaseMysql.time_to_mysql(stop))
-        rows = self.execute_fetchall_commit(query, params)
-        for row in rows:
-            row['latency'] = Database.short_latency_to_seconds(row['latency'])
-        return rows
-        """
+            start = end - 3601
+        datafile = self.get_src_dst_by_id(pair_id)
+        records = datafile.read_records(start, end)
+        return records
 
     def get_or_make_datafile(self, src_ip, dst_ip):
         if (src_ip, dst_ip) in self.datafiles:

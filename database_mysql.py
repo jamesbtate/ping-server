@@ -140,7 +140,14 @@ class DatabaseMysql(Database):
         return rows
 
     def get_binary_src_dst_by_id(self, id):
-        pass
+        """ Gets a binary src-dst pair from the database by ID number. """
+        query = "SELECT id, INET_NTOA(src) AS src, INET_NTOA(dst) AS dst, " + \
+                "binary_file FROM binary_src_dst WHERE id=%s"
+        self.cursor.execute(query, (id,))
+        rows = self.cursor.fetchall()
+        if not rows:
+            raise ValueError("No binary src-dst pair with ID# " + str(id))
+        return rows[0]
 
     def get_binary_src_dst_by_pair(self, src_ip, dst_ip):
         params = (src_ip, dst_ip)

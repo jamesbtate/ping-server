@@ -4,7 +4,7 @@ A DatabaseBinary object will keep a list/mapping of multiple Datafile objects.
 """
 
 import struct
-
+import logging
 
 class Datafile(object):
     """ This class will be a factory.
@@ -26,12 +26,15 @@ class Datafile(object):
         self.file = None  # file handle
         self.version = version
         self.header_struct = struct.Struct('ccccBBxxQQ')
+        self.header_length = self.header_struct.size
         self.record_struct = struct.Struct('IH')
+        self.record_length = self.record_struct.size
         self.data_length = data_length
         self.offset = offset
         self.number_of_records = number_of_records
         self.max_records = max_records
         self.max_data_area_bytes = (4 + data_length) * max_records
+        self.max_file_bytes = self.max_data_area_bytes + self.header_length
 
     def open_file(self, mode):
         """ Open the underlying file using the given mode. """
@@ -111,3 +114,48 @@ class Datafile(object):
         else:
             self.offset += 4 + self.data_length
             self.write_offset()
+
+    def read_all_records(self):
+        records = []
+        self.file.seek(self.offset)
+        for i in range(self.number_of_records):
+            if self.file.tell() >= self.max_file_bytes:
+                self.file.seek(self.header_length)
+            record_bytes = self.file.read(self.record_length)
+            record = self.record_struct.unpack(record_bytes)
+            records.append(record)
+        logging.debug("Read %i records from %s", len(records), self.file.name)
+        return records
+
+    def read_records(self, start_time, end_time):
+        """ Return the list of records from start to end times, inclusive.
+
+            start_time and end_time are UNIX epoch seconds.
+            If there are no records within the time range, [] is returned.
+
+            Sample return:
+                [(epoch-integer, 123), (epoch-integer+1, 65534), ...]
+        """
+        records = self.read_all_records()
+        if records[0][0] > end_time:
+            logging.debug("First record was after end_time: %i", end_time)
+            return []
+        if records[-1][0] < start_time:
+            logging.debug("Last record was before start_time: %i", start_time)
+            return []
+        # if we get to this point, we will always return at least one record.
+        # don't bother with binary search for now
+        first = 0
+        for i in range(len(records)):
+            if records[i][0] >= start_time:
+                first = i
+                break
+        last = len(records)
+        for i in range(first + 1, len(records)):
+            if records[i][0] > end_time:
+                last = i - 1
+                break
+        specific_records = records[first:last]
+        logging.debug("Got %i specific records from %i to %i",
+                      len(specific_records), start_time, end_time)
+        return specific_records
