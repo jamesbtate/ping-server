@@ -11,7 +11,7 @@ import misc
 import time
 import os
 
-from flask import Flask, render_template, send_from_directory
+from flask import Flask, request, render_template, send_from_directory
 app = Flask(__name__)
 db = None
 
@@ -46,7 +46,12 @@ def graph(pair_id):
     pair = db.get_src_dst_by_id(pair_id)
     title = str.format("Ping Results {} to {}", pair['src'], pair['dst'])
     t = time.time()
-    data = db.get_poll_data_by_id(pair_id, convert_to_datetime=True)
+    start_time = request.args.get('start_time',
+                                  default=int(time.time() - 3601), type=int)
+    stop_time = request.args.get('stop_time', default=int(time.time()),
+                                 type=int)
+    data = db.get_poll_data_by_id(pair_id, start=start_time,
+                                  end=stop_time, convert_to_datetime=True)
     success_times = []
     success_values = []
     timeout_times = []
@@ -65,6 +70,9 @@ def graph(pair_id):
     base64_src = graphing.figure_to_base64(figure)
     draw_time = time.time() - t
     data = {
+        'pair_id': pair_id,
+        'start_time': start_time,
+        'stop_time': stop_time,
         'points': len(data),
         'successes': len(success_times),
         'timeouts': len(timeout_times),
