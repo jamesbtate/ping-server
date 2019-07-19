@@ -11,7 +11,7 @@
     <tr><th>ID</th><th>Source IP</th><th>Destination IP</th><th>Polls</th></tr>
     {% for pair in src_dst_pairs %}
         <tr>
-            <td>{{ pair.id }}</td>
+            <td><a href="/graph/{{ pair.id }}">{{ pair.id }}</a></td>
             <td>{{ pair.src }}</td>
             <td>{{ pair.dst }}</td>
             <td>{{ pair.polls }}</td>

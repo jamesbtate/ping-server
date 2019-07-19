@@ -3,9 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <title>Graph</title>
+    <style>
+        body {
+            background-color: #DDDDDD;
+        }
+    </style>
 </head>
 <body>
 <p>Data points: {{ points }} Successes: {{ successes }} Timeouts: {{ timeouts }}</p>
+<p>Data retrieval time: {{ retrieve_time }} seconds</p>
+<p>Graph draw time: {{ draw_time }} seconds</p>
 <img src='{{ graph_src }}' />
 </body>
 </html>

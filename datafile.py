@@ -5,6 +5,7 @@ A DatabaseBinary object will keep a list/mapping of multiple Datafile objects.
 
 import struct
 import logging
+from database import Database
 
 class Datafile(object):
     """ This class will be a factory.
@@ -93,21 +94,24 @@ class Datafile(object):
         self.file.seek(16)
         self.file.write(Datafile.STRUCT_U_8.pack(self.number_of_records))
 
-    def record_datum(self, epoch, value):
+    def record_datum(self, datum_time, send_time, receive_time):
         """ Add an entry to the data file at the end of the data set.
 
             Writes the data to the the file and updates the header values:
             number_of_records and offset (if needed).
 
             Arguments:
-            epoch: UNIX time in seconds (integer)
-            value: latency value
+            datum_time: UNIX time in seconds (integer)
+            send_time: precise time ping was sent (float)
+            receive_time: precise time ping was received (float)
         """
         seek_to = self.offset + self.number_of_records * (4 + self.data_length)
         if seek_to >= self.header_struct.size + self.max_data_area_bytes:
             seek_to -= self.max_data_area_bytes
         self.file.seek(seek_to)
-        self.file.write(self.record_struct.pack(epoch, value))
+        encoded_latency = Database.time_diff_to_short_latency(send_time,
+                                                              receive_time)
+        self.file.write(self.record_struct.pack(datum_time, encoded_latency))
         if self.number_of_records < self.max_records:
             self.number_of_records += 1
             self.write_number_of_records()
@@ -115,14 +119,23 @@ class Datafile(object):
             self.offset += 4 + self.data_length
             self.write_offset()
 
+    def read_record(self):
+        """ Read a data record at the current position in the file.
+
+            Decodes the stored data.
+        """
+        record_bytes = self.file.read(self.record_length)
+        record = self.record_struct.unpack(record_bytes)
+        latency = Database.short_latency_to_seconds(record[1])
+        return [record[0], latency]
+
     def read_all_records(self):
         records = []
         self.file.seek(self.offset)
         for i in range(self.number_of_records):
             if self.file.tell() >= self.max_file_bytes:
                 self.file.seek(self.header_length)
-            record_bytes = self.file.read(self.record_length)
-            record = self.record_struct.unpack(record_bytes)
+            record = self.read_record()
             records.append(record)
         logging.debug("Read %i records from %s", len(records), self.file.name)
         return records

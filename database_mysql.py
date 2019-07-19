@@ -93,7 +93,7 @@ class DatabaseMysql(Database):
         self.connection.commit()
         return rows
 
-    def get_poll_data_by_pair(self, pair_id, start=None, stop=None):
+    def get_poll_data_by_id(self, pair_id, start=None, stop=None):
         """ Get poll data from DB for specific src_dst pair.
 
             Optionally specify the time window with epoch numbers

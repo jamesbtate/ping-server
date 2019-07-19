@@ -73,7 +73,7 @@ class Database(ABC):
         pass
 
     @abstractmethod
-    def get_poll_data_by_pair(self, pair_id, start=None, stop=None):
+    def get_poll_data_by_id(self, pair_id, start=None, stop=None):
         pass
 
     @abstractmethod

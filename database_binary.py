@@ -3,6 +3,7 @@
 Database abstraction layer
 """
 
+import datetime
 import time
 import os
 
@@ -36,21 +37,18 @@ class DatabaseBinary(Database):
         Returns the ID of src-dst pair. """
         pass
 
-    def get_data_file_handle(self, id):
-        """ Get a handle to the data file, opened for binary writing.
-
-            Uses a cache of datafile handles If the file
-            is not already open, open it.
-
-            This may be a bad idea for reads. Maybe reads should always be
-            fresh by opening the file and reading it entirely immediately.
-        """
-        pass
+    def get_datafile_handle(self, pair_id):
+        """ Get a handle to the data file, opened for binary writing. """
+        src_dst = self.get_src_dst_by_id(pair_id)
+        datafile = Datafile.open_datafile(src_dst['id'],
+                                          src_dst['binary_file'])
+        return datafile
 
     def get_poll_counts_by_pair(self):
         pass
 
-    def get_poll_data_by_id(self, pair_id, start=None, end=None):
+    def get_poll_data_by_id(self, pair_id, start=None, end=None,
+                            convert_to_datetime=False):
         """ Get poll data from DB for specific src_dst pair.
 
             Optionally specify the time window with epoch numbers
@@ -66,8 +64,11 @@ class DatabaseBinary(Database):
             end = time.time()
         if start is None:
             start = end - 3601
-        datafile = self.get_src_dst_by_id(pair_id)
+        datafile = self.get_datafile_handle(pair_id)
         records = datafile.read_records(start, end)
+        if convert_to_datetime:
+            for record in records:
+                record[0] = datetime.datetime.fromtimestamp(record[0])
         return records
 
     def get_or_make_datafile(self, src_ip, dst_ip):
@@ -94,6 +95,5 @@ class DatabaseBinary(Database):
 
     def record_poll_data(self, src_ip, dst_ip, send_time, receive_time):
         """ Record results of a single poll in the database. """
-        latency = Database.time_diff_to_short_latency(send_time, receive_time)
         datafile = self.get_or_make_datafile(src_ip, dst_ip)
-        datafile.record_datum(int(send_time), latency)
+        datafile.record_datum(int(send_time), send_time, receive_time)
