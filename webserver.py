@@ -9,8 +9,9 @@ from server import read_config
 import graphing
 import misc
 import time
+import os
 
-from flask import Flask, render_template
+from flask import Flask, render_template, send_from_directory
 app = Flask(__name__)
 db = None
 
@@ -18,6 +19,12 @@ db = None
 @app.route("/hello")
 def hello():
     return "Hello World!"
+
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               'favicon.ico')
 
 
 @app.route("/")
