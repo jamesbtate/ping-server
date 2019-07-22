@@ -7,6 +7,8 @@ from database_mysql import DatabaseMysql
 from database_binary import DatabaseBinary
 from server import read_config
 import graphing
+import argparse
+import logging
 import misc
 import time
 import os
@@ -32,7 +34,7 @@ def index():
     pairs = db.get_src_dst_pairs()
     poll_counts = db.get_poll_counts_by_pair()
     for pair in pairs:
-        #pair['polls'] = [_['count'] for _ in poll_counts if
+        # pair['polls'] = [_['count'] for _ in poll_counts if
         #                 _['src_dst'] == pair['id']][0]
         pair['polls'] = -7
     data = {
@@ -50,8 +52,9 @@ def graph(pair_id):
                                   default=int(time.time() - 3601), type=int)
     stop_time = request.args.get('stop_time', default=int(time.time()),
                                  type=int)
-    data = db.get_poll_data_by_id(pair_id, start=start_time,
-                                  end=stop_time, convert_to_datetime=True)
+    data, statistics = db.get_poll_data_by_id(pair_id, start=start_time,
+                                  end=stop_time, convert_to_datetime=True,
+                                  calculate_statistics=True)
     success_times = []
     success_values = []
     timeout_times = []
@@ -73,19 +76,29 @@ def graph(pair_id):
         'pair_id': pair_id,
         'start_time': start_time,
         'stop_time': stop_time,
-        'points': len(data),
-        'successes': len(success_times),
-        'timeouts': len(timeout_times),
         'graph_src': base64_src,
         'retrieve_time': retrieve_time,
-        'draw_time': draw_time
+        'draw_time': draw_time,
+        'statistics': statistics
     }
     return render_template("graph.html", **data)
+
+
+def parse_args():
+    description = "Run development webserver for ping project"
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help="Enable debug-level logging")
+    args = parser.parse_args()
+    if args.debug:
+        logger = logging.getLogger()
+        logger.setLevel(logging.DEBUG)
 
 
 def main():
     global app
     global db
+    parse_args()
     db_params = read_config()['server']
     db = DatabaseBinary(db_params)
     app.run(debug=True, host='0.0.0.0')

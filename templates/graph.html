@@ -10,7 +10,24 @@
     </style>
 </head>
 <body>
-<p>Data points: {{ points }} Successes: {{ successes }} Timeouts: {{ timeouts }}</p>
+<h3>Statistics</h3>
+<p> Data points: {{ statistics.echos }}
+    Successes: {{ statistics.successes }}
+    Timeouts: {{ statistics.timeouts }}
+    Success Rate:
+    {% if statistics.echos > 0 %}
+        {{ "%.1f"|format(statistics.successes / statistics.echos * 100) }}%
+    {% else %}
+        0.0%
+    {% endif %}
+</p>
+<p>
+    Minimum: {{ "%.1fms"|format(statistics.minimum * 1000) }}
+    Maximum: {{ "%.1fms"|format(statistics.maximum * 1000) }}
+    Average (mean): {{ "%.1fms"|format(statistics.mean * 1000) }}
+</p>
+<p></p>
+<h3>Debug</h3>
 <p>Data retrieval time: {{ retrieve_time }} seconds</p>
 <p>Graph draw time: {{ draw_time }} seconds</p>
 <img src='{{ graph_src }}' />

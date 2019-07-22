@@ -2,21 +2,19 @@
 Functions for generating graphs of the ping data
 """
 
-import matplotlib
 import matplotlib.dates
 matplotlib.use('agg')  # this does nothing if matplotlib.pyplot is imported
 import matplotlib.pyplot as plt
-# from matplotlib import rcParams
-# rcParams.update({'figure.autolayout': True})
-# import numpy as np
 import base64
 import io
 
+
 locator = matplotlib.dates.AutoDateLocator()
-formatter = matplotlib.dates.AutoDateFormatter(locator)
+formatter = matplotlib.dates.ConciseDateFormatter(locator)
+
 
 def ping_figure(success_times, success_values, timeout_times,
-                label=None, x_label=None, y_label=None):
+                label="Ping Results", x_label=None, y_label=None):
     """ Plot ping results. No decimation.
 
     success_times - list of times (x-values on the graph).
@@ -27,11 +25,10 @@ def ping_figure(success_times, success_values, timeout_times,
     y_label - Option Y-axis label for the graph.
     """
     figure, axes = plt.subplots()
-    figure.suptitle("Ping Results")
-    axes.xaxis.set_major_locator(locator)
-    axes.xaxis.set_major_formatter(formatter)
-    if label:
-        figure.suptitle(label)
+    if success_times or timeout_times:
+        axes.xaxis.set_major_locator(locator)
+        axes.xaxis.set_major_formatter(formatter)
+    axes.set_title(label)
     if x_label:
         axes.set_xlabel(x_label)
     if y_label:
@@ -46,10 +43,8 @@ def ping_figure(success_times, success_values, timeout_times,
     axes.vlines(timeout_times, y_min - y_range, y_max + y_range,
                 color='tab:red', linewidth=1)
     axes.set_ybound(y_bound)
-    #for t in timeout_times:
-    #    axes.axvline(t, 0, 1, color='tab:red', linewidth=1)
-    # figure.autofmt_xdate()  # rotate X-axis tick labels
     axes.tick_params(axis='x', labelrotation=30)
+    plt.tight_layout()  # re-calc position of axes, titles etc
     return figure
 
 

@@ -5,6 +5,7 @@ Database abstraction layer
 
 import datetime
 import time
+import sys
 import os
 
 from database import Database
@@ -48,17 +49,26 @@ class DatabaseBinary(Database):
         pass
 
     def get_poll_data_by_id(self, pair_id, start=None, end=None,
-                            convert_to_datetime=False):
+                            convert_to_datetime=False,
+                            calculate_statistics=False):
         """ Get poll data from DB for specific src_dst pair.
 
             Optionally specify the time window with epoch numbers
             or time structs.
 
             Returns a list of rows from the database.
-            Each row is a mapping with keys 'time' and 'latency'.
-            The time is Python time object.
+            Each row is a list with two items: time and latency.
+            The time is integer UNIX time, unless convert_to_datetime is True.
             The latency is the number of seconds latency (float).
             A latency value of None indicates a timeout.
+            If calculate_statistics is True, a dictionary of stats is also returned.
+            Statistics := {
+                'echos': 1801  # number of echo requests
+                'successes': 1234  # count of successful responses
+                'timeouts': 567  # count of "no response receive"
+                'mean': 0.123  # average latency, not considering timeouts
+                'min': 0.001
+                'max': 0.876  # does not account for infinite timeout
         """
         if end is None:
             end = time.time()
@@ -69,7 +79,37 @@ class DatabaseBinary(Database):
         if convert_to_datetime:
             for record in records:
                 record[0] = datetime.datetime.fromtimestamp(record[0])
-        return records
+        if calculate_statistics:
+            minimum = sys.float_info.max
+            maximum = sys.float_info.min
+            total = 0.0
+            successes = 0
+            timeouts = 0
+            mean = 0.0
+            for record in records:
+                latency = record[1]
+                if latency is None:
+                    timeouts += 1
+                    continue
+                successes += 1
+                total += latency
+                if latency < minimum:
+                    minimum = latency
+                if latency > maximum:
+                    maximum = latency
+            if records:
+                mean = total / successes
+            statistics = {
+                'echos': len(records),
+                'successes': successes,
+                'timeouts': timeouts,
+                'mean': mean,
+                'minimum': minimum,
+                'maximum': maximum
+            }
+            return records, statistics
+        else:
+            return records
 
     def get_or_make_datafile(self, src_ip, dst_ip):
         if (src_ip, dst_ip) in self.datafiles:
