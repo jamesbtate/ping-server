@@ -49,8 +49,7 @@ class DatabaseBinary(Database):
         pass
 
     def get_poll_data_by_id(self, pair_id, start=None, end=None,
-                            convert_to_datetime=False,
-                            calculate_statistics=False):
+                            convert_to_datetime=False):
         """ Get poll data from DB for specific src_dst pair.
 
             Optionally specify the time window with epoch numbers
@@ -61,14 +60,6 @@ class DatabaseBinary(Database):
             The time is integer UNIX time, unless convert_to_datetime is True.
             The latency is the number of seconds latency (float).
             A latency value of None indicates a timeout.
-            If calculate_statistics is True, a dictionary of stats is also returned.
-            Statistics := {
-                'echos': 1801  # number of echo requests
-                'successes': 1234  # count of successful responses
-                'timeouts': 567  # count of "no response receive"
-                'mean': 0.123  # average latency, not considering timeouts
-                'min': 0.001
-                'max': 0.876  # does not account for infinite timeout
         """
         if end is None:
             end = time.time()
@@ -79,37 +70,54 @@ class DatabaseBinary(Database):
         if convert_to_datetime:
             for record in records:
                 record[0] = datetime.datetime.fromtimestamp(record[0])
-        if calculate_statistics:
-            minimum = sys.float_info.max
-            maximum = sys.float_info.min
-            total = 0.0
-            successes = 0
-            timeouts = 0
-            mean = 0.0
-            for record in records:
-                latency = record[1]
-                if latency is None:
-                    timeouts += 1
-                    continue
-                successes += 1
-                total += latency
-                if latency < minimum:
-                    minimum = latency
-                if latency > maximum:
-                    maximum = latency
-            if records:
-                mean = total / successes
-            statistics = {
-                'echos': len(records),
-                'successes': successes,
-                'timeouts': timeouts,
-                'mean': mean,
-                'minimum': minimum,
-                'maximum': maximum
+        return records
+
+    @staticmethod
+    def calculate_statistics(records):
+        """ Calculate some statistics for a list of records.
+
+            Returns a dictionary of statistical values for the list of records.
+            Statistics := {
+                'echos': 1801  # number of echo requests
+                'successes': 1234  # count of successful responses
+                'timeouts': 567  # count of "no response receive"
+                'success_rate': 0.712  # fraction of requests that succeeded
+                'mean': 0.123  # average latency, not considering timeouts
+                'minimum': 0.001
+                'maximum': 0.876  # does not account for infinite timeout
             }
-            return records, statistics
-        else:
-            return records
+        """
+        minimum = sys.float_info.max
+        maximum = sys.float_info.min
+        total = 0.0
+        successes = 0
+        timeouts = 0
+        mean = 0.0
+        success_rate = 0.0
+        for record in records:
+            latency = record[1]
+            if latency is None:
+                timeouts += 1
+                continue
+            successes += 1
+            total += latency
+            if latency < minimum:
+                minimum = latency
+            if latency > maximum:
+                maximum = latency
+        if records:
+            mean = total / successes
+            success_rate = successes / len(records)
+        statistics = {
+            'echos': len(records),
+            'successes': successes,
+            'timeouts': timeouts,
+            'success_rate': success_rate,
+            'mean': mean,
+            'minimum': minimum,
+            'maximum': maximum
+        }
+        return statistics
 
     def get_or_make_datafile(self, src_ip, dst_ip):
         if (src_ip, dst_ip) in self.datafiles:

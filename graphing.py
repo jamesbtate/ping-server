@@ -6,6 +6,7 @@ import matplotlib.dates
 matplotlib.use('agg')  # this does nothing if matplotlib.pyplot is imported
 import matplotlib.pyplot as plt
 import base64
+import time
 import io
 
 
@@ -55,3 +56,22 @@ def figure_to_base64(figure):
     b64_figure = base64.b64encode(bytes_io.getbuffer()).decode('utf-8')
     output = str.format("data:image/png;charset=utf-8;base64, {}", b64_figure)
     return output
+
+
+def make_graph(pair, records):
+    """ Make a graph for the given pair and list of records"""
+    title = str.format("Ping Results {} to {}", pair['src'], pair['dst'])
+    success_times = []
+    success_values = []
+    timeout_times = []
+    for record in records:
+        if record[1] is None:
+            timeout_times.append(record[0])
+        else:
+            success_times.append(record[0])
+            # multiply by 1000 for millis
+            success_values.append(record[1] * 1000)
+    figure = ping_figure(success_times, success_values, timeout_times,
+                         label=title, x_label="Time", y_label="Milliseconds")
+    base64_src = figure_to_base64(figure)
+    return base64_src

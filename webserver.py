@@ -46,31 +46,14 @@ def index():
 @app.route("/graph/<int:pair_id>")
 def graph(pair_id):
     pair = db.get_src_dst_by_id(pair_id)
-    title = str.format("Ping Results {} to {}", pair['src'], pair['dst'])
+    start_time, stop_time = misc.get_time_extents(request.args)
     t = time.time()
-    start_time = request.args.get('start_time',
-                                  default=int(time.time() - 3601), type=int)
-    stop_time = request.args.get('stop_time', default=int(time.time()),
-                                 type=int)
-    data, statistics = db.get_poll_data_by_id(pair_id, start=start_time,
-                                  end=stop_time, convert_to_datetime=True,
-                                  calculate_statistics=True)
-    success_times = []
-    success_values = []
-    timeout_times = []
-    for datum in data:
-        if datum[1] is None:
-            timeout_times.append(datum[0])
-        else:
-            success_times.append(datum[0])
-            # multiply by 1000 for millis
-            success_values.append(datum[1] * 1000)
+    records = db.get_poll_data_by_id(pair_id, start=start_time, end=stop_time,
+                                     convert_to_datetime=True)
+    statistics = db.calculate_statistics(records)
     retrieve_time = time.time() - t
     t = time.time()
-    figure = graphing.ping_figure(success_times, success_values, timeout_times,
-                                  label=title, x_label="Time",
-                                  y_label="Milliseconds")
-    base64_src = graphing.figure_to_base64(figure)
+    base64_src = graphing.make_graph(pair, records)
     draw_time = time.time() - t
     data = {
         'pair_id': pair_id,

@@ -10,6 +10,7 @@
     </style>
 </head>
 <body>
+<a href="/">Home</a>
 <h3>Statistics</h3>
 <p> Data points: {{ statistics.echos }}
     Successes: {{ statistics.successes }}
@@ -26,11 +27,16 @@
     Maximum: {{ "%.1fms"|format(statistics.maximum * 1000) }}
     Average (mean): {{ "%.1fms"|format(statistics.mean * 1000) }}
 </p>
-<p></p>
+<img src='{{ graph_src }}' />
+<p>
+    <a href="/graph/{{ pair_id }}?start_time={{ start_time }}&stop_time={{ stop_time }}">Permalink to this graph</a>
+    <a href="/graph/{{ pair_id }}?window=1h">Last Hour</a>
+    <a href="/graph/{{ pair_id }}?window=8h">Last 8 Hours</a>
+    <a href="/graph/{{ pair_id }}?window=1d">Last Day</a>
+    <a href="/graph/{{ pair_id }}?window=1w">Last Week</a>
+</p>
 <h3>Debug</h3>
 <p>Data retrieval time: {{ retrieve_time }} seconds</p>
 <p>Graph draw time: {{ draw_time }} seconds</p>
-<img src='{{ graph_src }}' />
-<p><a href="/graph/{{ pair_id }}?start_time={{ start_time }}&stop_time={{ stop_time }}">Permalink to this graph</a></p>
 </body>
 </html>
