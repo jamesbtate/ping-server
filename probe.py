@@ -358,13 +358,32 @@ def setup_signal_handler():
         # Handle Ctrl-Break e.g. under Windows
         signal.signal(signal.SIGBREAK, signal_handler)
 
+
 def parse_args():
     description = "Ping stuff and send the responses to a recording server."
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-f', '--foreground', action='store_true',
                         help="Run in foreground and log to stderr.")
+    parser.add_argument('-d', '--debug', dest='log_level',
+                        default=logging.INFO, action='store_const',
+                        const=logging.DEBUG,
+                        help="Enable debug-level logging.")
     args = parser.parse_args()
     return args
+
+
+def ping_targets_from_config(config):
+    """ Read the ping targets from the config parser. Returns a list of IPs"""
+    section = config['probe targets']
+    addresses = []
+    for key in section.keys():
+        try:
+            addr = socket.gethostbyname(key)
+            logging.debug("Resolved probe target: %s => %s", key, addr)
+            addresses.append(addr)
+        except socket.gaierror:
+            logging.error("Unable to resolve probe target: %s", key)
+    return addresses
 
 
 def main():
@@ -375,17 +394,16 @@ def main():
                  + '%(message)s'
     config_parser = configparser.ConfigParser(allow_no_value=True)
     config_parser.read('ping.conf')
-    log_level = logging.INFO
     if args.foreground:
-        logging.basicConfig(format=log_format, level=log_level)
+        logging.basicConfig(format=log_format, level=args.log_level)
     else:
         log_filename = config_parser['probe']['log_file']
         logging.basicConfig(filename=log_filename, format=log_format,
-                            level=log_level)
+                            level=args.log_level)
     setup_signal_handler()
     output_queue = queue.Queue()
     event_loop = asyncio.get_event_loop()
-    hosts = ('192.168.5.5', '192.168.5.18', '8.8.8.8', 'ucla.edu', '1.2.3.4')
+    hosts = ping_targets_from_config(config_parser)
     args = (hosts, output_queue)
     ping_thread = threading.Thread(target=_ping, args=args)
     logging.info("Starting ping thread")

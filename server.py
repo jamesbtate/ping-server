@@ -59,6 +59,10 @@ def parse_args():
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-f', '--foreground', action='store_true',
                         help="Run in foreground and log to stderr.")
+    parser.add_argument('-d', '--debug', dest='log_level',
+                        default=logging.INFO, action='store_const',
+                        const=logging.DEBUG,
+                        help="Enable debug-level logging.")
     args = parser.parse_args()
     return args
 
@@ -72,13 +76,12 @@ def main():
     config_parser = read_config()
     log_format = '%(asctime)s %(levelname)s:%(module)s:%(funcName)s# ' \
                  + '%(message)s'
-    log_level = logging.INFO
     if args.foreground:
-        logging.basicConfig(format=log_format, level=log_level)
+        logging.basicConfig(format=log_format, level=args.log_level)
     else:
         log_filename = config_parser['server']['log_file']
         logging.basicConfig(filename=log_filename, format=log_format,
-                            level=log_level)
+                            level=args.log_level)
     db_queue = queue.Queue()
     listen_ip = config_parser['server']['ws_address']
     listen_port = int(config_parser['server']['ws_port'])

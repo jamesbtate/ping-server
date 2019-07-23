@@ -145,3 +145,21 @@ class DatabaseBinary(Database):
         """ Record results of a single poll in the database. """
         datafile = self.get_or_make_datafile(src_ip, dst_ip)
         datafile.record_datum(int(send_time), send_time, receive_time)
+
+    def get_file_modification_time(self, path, iso8601=False):
+        """ Returns the UNIX time of when a file was last modified.
+
+            Arguments:
+                path: path to the file on the filesystem
+
+            Returns a float for the UNIX/epoch time of file modification.
+            If iso8601 is True, return a formatted string instead.
+            May raise an error if the file cannot be stat-ed.
+        """
+        mtime = os.stat(path).st_mtime
+        if iso8601:
+            dt = datetime.datetime.fromtimestamp(mtime)
+            date_string = dt.isoformat()
+            return date_string
+        else:
+            return mtime

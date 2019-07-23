@@ -32,7 +32,14 @@ def favicon():
 @app.route("/")
 def index():
     pairs = db.get_src_dst_pairs()
-    poll_counts = db.get_poll_counts_by_pair()
+    for pair in pairs:
+        try:
+            pair['mtime'] = db.get_file_modification_time(pair['binary_file'],
+                                                          iso8601=True)
+        except FileNotFoundError:
+            pair['mtime'] = "File not found"
+        except PermissionError:
+            pair['mtime'] = "Permission denied"
     for pair in pairs:
         # pair['polls'] = [_['count'] for _ in poll_counts if
         #                 _['src_dst'] == pair['id']][0]

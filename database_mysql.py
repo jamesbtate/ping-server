@@ -5,6 +5,7 @@ Database abstraction layer
 
 import mysql.connector
 import datetime
+import logging
 import time
 
 from database import Database
@@ -131,7 +132,6 @@ class DatabaseMysql(Database):
         self.cursor.execute(query, params)
         self.connection.commit()
 
-
     def get_binary_src_dst_pairs(self):
         query = "SELECT id, INET_NTOA(src) AS src, INET_NTOA(dst) AS dst, " + \
                 "binary_file FROM binary_src_dst"
@@ -169,4 +169,5 @@ class DatabaseMysql(Database):
         self.cursor.execute(query, params)
         self.connection.commit()
         pair_id = self.cursor.lastrowid
+        logging.info("Created new binary pair: %i %s to %s", pair_id, src, dst)
         return pair_id

@@ -52,6 +52,7 @@ class Datafile(object):
                       number_of_records, max_records)
         df.open_file('w+b')  # w+b means binary; truncate any existing file
         df.write_header()
+        logging.info("Created new datafile: %i %s", pid, path)
         return df
 
     @staticmethod

@@ -8,13 +8,18 @@
 <h1>Ping Dashboard</h1>
 <h3>Source-Destination Pairs</h3>
 <table>
-    <tr><th>ID</th><th>Source IP</th><th>Destination IP</th><th>Polls</th></tr>
+    <tr>
+        <th>ID</th>
+        <th>Source IP</th>
+        <th>Destination IP</th>
+        <th>Modification Time</th>
+    </tr>
     {% for pair in src_dst_pairs %}
         <tr>
             <td><a href="/graph/{{ pair.id }}">{{ pair.id }}</a></td>
             <td>{{ pair.src }}</td>
             <td>{{ pair.dst }}</td>
-            <td>{{ pair.polls }}</td>
+            <td>{{ pair.mtime }}</td>
         </tr>
     {% endfor %}
 </table>
