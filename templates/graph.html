@@ -17,7 +17,7 @@
     Timeouts: {{ statistics.timeouts }}
     Success Rate:
     {% if statistics.echos > 0 %}
-        {{ "%.1f"|format(statistics.successes / statistics.echos * 100) }}%
+        {{ "%.2f"|format(statistics.successes / statistics.echos * 100) }}%
     {% else %}
         0.0%
     {% endif %}
