@@ -80,8 +80,9 @@ def parse_args():
     parser.add_argument('-d', '--debug', action='store_true',
                         help="Enable debug-level logging")
     args = parser.parse_args()
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
     if args.debug:
-        logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
 
 
