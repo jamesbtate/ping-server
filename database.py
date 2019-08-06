@@ -12,6 +12,28 @@ class Database(ABC):
         super().__init__()
 
     @staticmethod
+    def seconds_to_short_latency(seconds):
+        """ Converts difference in times to a short integer latency.
+
+        seconds - time in seconds
+        If either parameter is null, a timeout is assumed.
+
+        Used to store latency values of 0-1 seconds in a 2-byte field.
+        0.0s => 0, 0.01s => 655, 0.5s => 32767
+        None => 65535 (the magic value for timeout)
+        1.00001s => 65535 (>1.0s also considered a timeout)
+
+        Returns an integer in [0,65535]. A short integer or simply "short."
+        """
+        if seconds is None:
+            return 65535
+        short_latency = round(seconds * 65534)  # int in 0..65534
+        if short_latency > 65535 or short_latency < 0:
+            short_latency = 65535  # treat >1000ms replies as timeouts
+        return short_latency
+
+
+    @staticmethod
     def time_diff_to_short_latency(start, stop):
         """ Converts difference in times to a short integer latency.
 
@@ -30,9 +52,7 @@ class Database(ABC):
             short_latency = 65535  # magic value in the not null column
         else:
             seconds = stop - start
-            short_latency = round(seconds * 65534)  # int in 0..65534
-            if short_latency > 65535 or short_latency < 0:
-                short_latency = 65535  # treat >1000ms replies as timeouts
+            short_latency = Database.seconds_to_short_latency(seconds)
         return short_latency
 
     @staticmethod

@@ -95,6 +95,18 @@ class Datafile(object):
         self.file.seek(16)
         self.file.write(Datafile.STRUCT_U_8.pack(self.number_of_records))
 
+    def _write_record_now(self, datum_time, encoded_latency):
+        """ Writes one record to the datafile immediately.
+
+            No seeking is done. No other fields are updated.
+
+            Args:
+            datum_time: UNIX time (integer)
+            encoded_latency: integer 0..65535 representing latency in 0.0..1.0s
+        """
+        self.file.write(self.record_struct.pack(datum_time, encoded_latency))
+
+
     def record_datum(self, datum_time, send_time, receive_time):
         """ Add an entry to the data file at the end of the data set.
 
@@ -106,19 +118,43 @@ class Datafile(object):
             send_time: precise time ping was sent (float)
             receive_time: precise time ping was received (float)
         """
-        seek_to = self.offset + self.number_of_records * (4 + self.data_length)
-        if seek_to >= self.header_struct.size + self.max_data_area_bytes:
+        seek_to = self.offset + self.number_of_records * self.record_length
+        if seek_to >= self.max_file_bytes:
             seek_to -= self.max_data_area_bytes
         self.file.seek(seek_to)
         encoded_latency = Database.time_diff_to_short_latency(send_time,
                                                               receive_time)
-        self.file.write(self.record_struct.pack(datum_time, encoded_latency))
+        self._write_record_now(datum_time, encoded_latency)
         if self.number_of_records < self.max_records:
             self.number_of_records += 1
             self.write_number_of_records()
+            #if self.number_of_records % 10 == 0:
+            #    self.file.flush()
         else:
-            self.offset += 4 + self.data_length
+            self.offset += self.record_length
+            if self.offset > self.max_file_bytes:
+                self.offset -= self.max_data_area_bytes
             self.write_offset()
+            #if (self.offset - self.header_length) % (self.record_length * 10) == 0:
+        self.file.flush()
+        logging.debug("Recorded datum for PID %i: %i %i Num: %i Offset: %i",
+                      self.pid, datum_time, encoded_latency,
+                      self.number_of_records, self.offset)
+
+    def write_all_records(self, records):
+        """ Used to overwrite all records in the datafile.
+
+            Records are overwritten starting after the header.
+            number_of_records is updated. offset is set to header_length.
+        """
+        self.offset = self.header_length
+        self.file.seek(self.offset)
+        for record in records:
+            encoded_latency = Database.seconds_to_short_latency(record[1])
+            self._write_record_now(record[0], encoded_latency)
+        self.number_of_records = len(records)
+        self.write_number_of_records()
+        self.write_offset()
 
     def read_record(self):
         """ Read a data record at the current position in the file.
