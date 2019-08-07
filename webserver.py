@@ -12,8 +12,9 @@ import logging
 import misc
 import time
 import os
+import gc
 
-from flask import Flask, request, render_template, send_from_directory
+from flask import Flask, request, render_template, send_from_directory, jsonify
 app = Flask(__name__)
 db = None
 
@@ -72,6 +73,21 @@ def graph(pair_id):
         'statistics': statistics
     }
     return render_template("graph.html", **data)
+
+
+@app.route("/cache_info/get_poll_data")
+def cache_info_get_poll_data():
+    cache = db.cache
+    return jsonify({
+        'Currsize': cache.currsize,
+        'Maxsize': cache.maxsize
+    })
+
+
+@app.route("/gc")
+def garbage_collect():
+    gc.collect()
+    return "Garbage collected"
 
 
 def parse_args():

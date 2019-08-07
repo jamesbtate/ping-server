@@ -74,4 +74,7 @@ def make_graph(pair, records):
     figure = ping_figure(success_times, success_values, timeout_times,
                          label=title, x_label="Time", y_label="Milliseconds")
     base64_src = figure_to_base64(figure)
+    # clear the figure and close pyplot to prevent memory leaks
+    figure.clf()
+    plt.close()
     return base64_src

@@ -3,10 +3,14 @@
 Database abstraction layer
 """
 
+import operator
 import datetime
 import time
 import sys
 import os
+
+from functools import lru_cache
+from cachetools import LRUCache, cachedmethod
 
 from database import Database
 from database_mysql import DatabaseMysql
@@ -21,6 +25,7 @@ class DatabaseBinary(Database):
         super().__init__()
         self.datafiles = {}  # mapping of src-dst IP tuples to Datafiles
         self.databaseMysql = DatabaseMysql(db_params)
+        self.cache = LRUCache(maxsize=8)
 
     def get_src_dst_pairs(self):
         return self.databaseMysql.get_binary_src_dst_pairs()
@@ -48,6 +53,7 @@ class DatabaseBinary(Database):
     def get_poll_counts_by_pair(self):
         pass
 
+    @cachedmethod(operator.attrgetter('cache'))
     def get_poll_data_by_id(self, pair_id, start=None, end=None,
                             convert_to_datetime=False):
         """ Get poll data from DB for specific src_dst pair.
