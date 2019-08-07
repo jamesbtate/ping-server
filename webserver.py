@@ -79,8 +79,9 @@ def graph(pair_id):
 def cache_info_get_poll_data():
     cache = db.cache
     return jsonify({
-        'Currsize': cache.currsize,
-        'Maxsize': cache.maxsize
+        'Entries': len(cache.keys()),
+        'Records': cache.currsize,
+        'Max Records': cache.maxsize
     })
 
 
