@@ -25,7 +25,7 @@ class DatabaseBinary(Database):
         super().__init__()
         self.datafiles = {}  # mapping of src-dst IP tuples to Datafiles
         self.databaseMysql = DatabaseMysql(db_params)
-        self.cache = LRUCache(maxsize=8)
+        self.cache = LRUCache(maxsize=1048576, getsizeof=len)
 
     def get_src_dst_pairs(self):
         return self.databaseMysql.get_binary_src_dst_pairs()
