@@ -21,8 +21,10 @@ def parse_args():
                         help='Random minimum')
     parser.add_argument('-M', '--maximum', type=int, default=255,
                         help='Random maximum')
+    parser.add_argument('-b', '--read-blocks', metavar='block-size', type=int,
+                        help='Read file, specify number of records in a block to read at a time.')
     args = parser.parse_args()
-    if not args.read and not args.write:
+    if not args.read and not args.write and not args.read_blocks:
         parser.error("No test specified.")
     return args
 
@@ -53,6 +55,7 @@ def test_read_args(args):
 
 
 def test_read(filename):
+    start = time.time()
     f = open(filename, 'rb')
     header = f.read(5)
     format_size = header[4]
@@ -68,7 +71,38 @@ def test_read(filename):
             break
         values = struct.unpack(format_string, data)
         count += 1
-    logging.info("Read %s log messages", count)
+    stop = time.time()
+    logging.info("Read %s log messages in %.3f seconds", count, stop - start)
+    logging.info("Last values: time:%i latency:%i", values[0], values[1])
+    f.close()
+
+
+def test_read_n_records(filename, n):
+    """ Test reading files in blocks of n records. """
+    record_size = 6
+    logging.info("Record size: %i", record_size)
+    record_struct = struct.Struct("IH")
+    logging.info("Record struct length: %i", record_struct.size)
+    record_struct_1000 = struct.Struct("=" + "IH" * 1000)
+    logging.info("Record struct 1000 length: %i", record_struct_1000.size)
+    start = time.time()
+    f = open(filename, 'rb')
+    count = 0
+    while True:
+        data = f.read(record_size * n)
+        if not data:
+            break
+        if len(data) == record_size * 1000:
+            values_list = record_struct_1000.unpack(data)
+            count += 1000
+        else:
+            for i in range(0, len(data), record_size):
+                if i + record_size > len(data):
+                    break
+                values = record_struct.unpack(data[i:i+record_size])
+                count += 1
+    stop = time.time()
+    logging.info("Read %s records in %.3f seconds", count, stop - start)
     logging.info("Last values: time:%i latency:%i", values[0], values[1])
     f.close()
 
@@ -81,6 +115,8 @@ def main():
         test_write_args(args)
     if args.read:
         test_read(args.filename)
+    if args.read_blocks:
+        test_read_n_records(args.filename, args.read_blocks)
 
 
 if __name__ == '__main__':
