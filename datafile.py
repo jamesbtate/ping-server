@@ -28,7 +28,9 @@ class Datafile(object):
         self.version = version
         self.header_struct = struct.Struct('ccccBBxxQQ')
         self.header_length = self.header_struct.size
-        self.record_struct = struct.Struct('IH')
+        self.record_format = 'IH'
+        self.record_struct = struct.Struct('=' + self.record_format)
+        self.multiple_record_structs = {1: self.record_struct}
         self.record_length = self.record_struct.size
         self.data_length = data_length
         self.offset = offset
@@ -106,7 +108,6 @@ class Datafile(object):
         """
         self.file.write(self.record_struct.pack(datum_time, encoded_latency))
 
-
     def record_datum(self, datum_time, send_time, receive_time):
         """ Add an entry to the data file at the end of the data set.
 
@@ -166,16 +167,59 @@ class Datafile(object):
         latency = Database.short_latency_to_seconds(record[1])
         return [record[0], latency]
 
-    def read_all_records(self):
+    def get_multiple_record_struct(self, n):
+        """ Get (make if needed) to decode n records at once. """
+        try:
+            return self.multiple_record_structs[n]
+        except KeyError:
+            new_record_struct = struct.Struct('=' + self.record_format * n)
+            self.multiple_record_structs[n] = new_record_struct
+            return new_record_struct
+
+    def read_n_records(self, n):
+        """ Read multiple records at the current position in the file.
+
+            Returns a list of lists: one sublist for each decoded record
+        """
         records = []
-        self.file.seek(self.offset)
-        for i in range(self.number_of_records):
-            if self.file.tell() >= self.max_file_bytes:
-                self.file.seek(self.header_length)
-            record = self.read_record()
-            records.append(record)
-        logging.debug("Read %i records from %s", len(records), self.file.name)
+        data = self.file.read(self.record_length * n)
+        if not data:
+            return records
+        records_read = len(data) // self.record_length
+        if len(data) % self.record_length != 0:
+            logging.warning("Read %i bytes not divisible by record length: %i",
+                            len(data), self.record_length)
+        if records_read != n:
+            logging.warning("Read fewer bytes than expected: %i/%i",
+                            len(data), n * self.record_length)
+        read_struct = self.get_multiple_record_struct(len(data) //
+                                                      self.record_length)
+        all_values = read_struct.unpack(data)
+        for i in range(records_read):
+            epoch = all_values[i * 2]
+            latency = Database.short_latency_to_seconds(all_values[i * 2 + 1])
+            records.append([epoch, latency])
         return records
+
+    def read_all_records(self):
+        all_records = []
+        self.file.seek(self.offset)
+        remaining_records = self.number_of_records
+        while True:
+            pos = self.file.tell()
+            if pos >= self.max_file_bytes:
+                self.file.seek(self.header_length)
+                pos = self.header_length
+            bytes_left_to_eof = self.max_file_bytes - pos
+            records_left_to_eof = bytes_left_to_eof // self.record_length
+            read = min(1000, records_left_to_eof, remaining_records)
+            records = self.read_n_records(read)
+            all_records += records
+            remaining_records -= len(records)
+            if remaining_records <= 0:
+                break
+        logging.debug("Read %i records from %s", len(records), self.file.name)
+        return all_records
 
     def read_records(self, start_time, end_time):
         """ Return the list of records from start to end times, inclusive.
