@@ -18,6 +18,7 @@ from datafile import Datafile
 
 
 class DatabaseBinary(Database):
+    DEFAULT_MAX_RECORDS = 604800
     def __init__(self, db_params):
         self.db_params = db_params
         self.connection = None
@@ -47,7 +48,8 @@ class DatabaseBinary(Database):
         """ Get a handle to the data file, opened for binary writing. """
         src_dst = self.get_src_dst_by_id(pair_id)
         datafile = Datafile.open_datafile(src_dst['id'],
-                                          src_dst['binary_file'])
+                                          src_dst['binary_file'],
+                                          max_records=src_dst['max_records'])
         return datafile
 
     def get_poll_counts_by_pair(self):
@@ -132,8 +134,7 @@ class DatabaseBinary(Database):
         binary_pair = self.databaseMysql.get_binary_src_dst_by_pair(src_ip,
                                                                     dst_ip)
         if binary_pair:
-            datafile = Datafile.open_datafile(binary_pair['id'],
-                                              binary_pair['binary_file'])
+            datafile = self.get_datafile_handle(binary_pair['id'])
         # otherwise, make a new pair in the DB
         else:
             directory = self.db_params['binary_data_directory']
@@ -142,8 +143,10 @@ class DatabaseBinary(Database):
             binary_file = os.path.join(directory, filename)
             pair_id = self.databaseMysql.make_binary_src_dst_pair(src_ip,
                                                                   dst_ip,
-                                                                  binary_file)
-            datafile = Datafile.create_new_datafile(pair_id, binary_file)
+                                                                  binary_file,
+                                                                  DEFAULT_MAX_RECORDS)
+            datafile = Datafile.create_new_datafile(pair_id, binary_file,
+                                                    max_records=DEFAULT_MAX_RECORDS)
         self.datafiles[(src_ip, dst_ip)] = datafile
         return datafile
 

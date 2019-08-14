@@ -12,6 +12,7 @@
         <th>ID</th>
         <th>Source IP</th>
         <th>Destination IP</th>
+        <th>Max Records</th>
         <th>Modification Time</th>
     </tr>
     {% for pair in src_dst_pairs %}
@@ -19,6 +20,7 @@
             <td><a href="/graph/{{ pair.id }}">{{ pair.id }}</a></td>
             <td>{{ pair.src }}</td>
             <td>{{ pair.dst }}</td>
+            <td>{{ pair.max_records }}</td>
             <td>{{ pair.mtime }}</td>
         </tr>
     {% endfor %}

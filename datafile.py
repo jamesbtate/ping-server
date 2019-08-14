@@ -207,10 +207,13 @@ class Datafile(object):
         remaining_records = self.number_of_records
         while True:
             pos = self.file.tell()
-            if pos >= self.max_file_bytes:
+            #if pos >= self.max_file_bytes:
+            current_file_length = self.number_of_records * self.record_length \
+                                  + self.header_length
+            if pos >= current_file_length:
                 self.file.seek(self.header_length)
                 pos = self.header_length
-            bytes_left_to_eof = self.max_file_bytes - pos
+            bytes_left_to_eof = current_file_length - pos
             records_left_to_eof = bytes_left_to_eof // self.record_length
             read = min(1000, records_left_to_eof, remaining_records)
             records = self.read_n_records(read)

@@ -29,6 +29,11 @@ def parse_args():
     parser.add_argument('-v', '--verify', action='store_true', help="Run some checks on the datafile.")
     parser.add_argument('-s', '--sort', action='store_true',
                         help="Read records from datafile and sort into output datafile.")
+    parser.add_argument('-n', '--new', action='store_true', help="Make a new output datafile.")
+    parser.add_argument('-V', '--version', type=int, default=3, help="Write version value to output datafile header.")
+    parser.add_argument('-L', '--data-length', type=int, default=2, help="Write data length value to output datafile header.")
+    parser.add_argument('-O', '--offset', type=int, default=24, help="Write offset value to output datafile header.")
+    parser.add_argument('-N', '--num-records', type=int, default=0, help="Write number of records value to output datafile header.")
     parser.add_argument('datafile', nargs='?', help="Path to input datafile")
     parser.add_argument('-o', '--output', metavar="PATH", help="Output file.")
     args = parser.parse_args()
@@ -40,8 +45,8 @@ def parse_args():
     if args.info or args.head or args.tail or args.sort:
         if not args.datafile:
             parser.error("Must specify input datafile")
-    if args.sort and not args.output:
-        parser.error("--sort requires --output")
+    if (args.sort or args.new) and not args.output:
+        parser.error("Writing a datafile requires --output")
     return args
 
 
@@ -115,9 +120,14 @@ def show_verify_datafile(datafile, records):
     # count how many time the records are out-of-order
     prev_record = records[0]
     decreases = 0
+    index = -1
     for record in records:
+        index += 1
         if record[0] < prev_record[0]:
             decreases += 1
+            print("Record #", index, "out of order. Previous:",
+                  prev_record[0], "This:", record[0], "Diff:",
+                  record[0] - prev_record[0])
         prev_record = record
     print("Number of records out of order:", decreases)
 
@@ -131,6 +141,20 @@ def sort_records_into_new_datafile(records, new_path):
     stop = time.time()
     logging.info("Wrote %i records to %s", len(records), new_path)
     logging.debug("Took %0.2f seconds to write all records", stop - start)
+
+
+def new_datafile(args):
+    new_datafile = Datafile.create_new_datafile(-1, args.output,
+                                                version=args.version,
+                                                data_length=args.data_length,
+                                                offset=args.offset,
+                                                number_of_records=args.num_records)
+    new_datafile.file.seek(new_datafile.header_length)
+    for i in range(args.num_records):
+        new_datafile.file.write(bytes(new_datafile.record_length))
+    logging.info("Wrote new datafile: %s with %i null records",
+                 args.output, args.num_records)
+    show_datafile_info(new_datafile)
 
 
 def main():
@@ -153,6 +177,8 @@ def main():
             show_verify_datafile(datafile, records)
         if args.sort:
             sort_records_into_new_datafile(records, args.output)
+    if args.new:
+        new_datafile(args)
 
 
 if __name__ == '__main__':

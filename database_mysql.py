@@ -151,14 +151,14 @@ class DatabaseMysql(Database):
 
     def get_binary_src_dst_pairs(self):
         query = "SELECT id, INET_NTOA(src) AS src, INET_NTOA(dst) AS dst, " + \
-                "binary_file FROM binary_src_dst"
+                "binary_file, max_records FROM binary_src_dst"
         rows = self.execute_fetchall_commit(query)
         return rows
 
     def get_binary_src_dst_by_id(self, id):
         """ Gets a binary src-dst pair from the database by ID number. """
         query = "SELECT id, INET_NTOA(src) AS src, INET_NTOA(dst) AS dst, " + \
-                "binary_file FROM binary_src_dst WHERE id=%s"
+                "binary_file, max_records FROM binary_src_dst WHERE id=%s"
         rows = self.execute_fetchall_commit(query, (id,))
         if not rows:
             raise ValueError("No binary src-dst pair with ID# " + str(id))
@@ -173,15 +173,15 @@ class DatabaseMysql(Database):
             return rows
         return rows[0]
 
-    def make_binary_src_dst_pair(self, src, dst, binary_file):
+    def make_binary_src_dst_pair(self, src, dst, binary_file, max_records):
         """ Make an entry in the database for a src-dst pair with data file.
 
         Args:
         binary_file: path to data file
         """
-        query = "INSERT INTO binary_src_dst (src,dst,binary_file) VALUES \
-                 (INET_ATON(%s), INET_ATON(%s), %s)"
-        params = (src, dst, binary_file)
+        query = "INSERT INTO binary_src_dst (src,dst,binary_file,max_records) \
+                 VALUES (INET_ATON(%s), INET_ATON(%s), %s, %s)"
+        params = (src, dst, binary_file, max_records)
         self.execute_commit(query, params)
         pair_id = self.cursor.lastrowid
         logging.info("Created new binary pair: %i %s to %s", pair_id, src, dst)

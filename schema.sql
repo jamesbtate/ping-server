@@ -17,5 +17,6 @@ CREATE TABLE `binary_src_dst` (
   `src` int(10) unsigned NOT NULL,
   `dst` int(10) unsigned NOT NULL,
   `binary_file` varchar(256) NULL,
+  `max_records` bigint(20) unsigned NOT NULL DEFAULT '604800',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB COLLATE='utf8_general_ci';
