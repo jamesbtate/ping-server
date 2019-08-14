@@ -133,7 +133,7 @@ class Datafile(object):
             #    self.file.flush()
         else:
             self.offset += self.record_length
-            if self.offset > self.max_file_bytes:
+            if self.offset >= self.max_file_bytes:
                 self.offset -= self.max_data_area_bytes
             self.write_offset()
             #if (self.offset - self.header_length) % (self.record_length * 10) == 0:
