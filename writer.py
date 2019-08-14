@@ -19,6 +19,8 @@ class Writer(threading.Thread):
         self.keep_going = True
 
     def stop(self):
+        logging.warning("Writer shutting down with %i messages in write queue",
+                        self.db_queue.qsize())
         self.keep_going = False
 
     def store_output(self, message):

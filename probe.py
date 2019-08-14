@@ -343,12 +343,18 @@ def transmit_loop(config_parser):
 
 def signal_handler(signum, frame):
     """ Handle exit via signals """
+    msg = "(Terminated with signal %d)" % signum
+    logging.error(msg)
+    shutdown()
+
+
+def shutdown():
     global keep_going
     global event_loop
-    msg = "\n(Terminated with signal %d)\n" % signum
-    logging.error(msg)
     keep_going = False
     event_loop.stop()
+    logging.warning("Probe shutting down with %i messages in transmit queue.",
+                    output_queue.qsize())
     # sys.exit(0)
 
 
@@ -410,7 +416,10 @@ def main():
     ping_thread.start()
     logging.info("Starting event loop")
     event_loop.create_task(transmit_loop(config_parser))
-    event_loop.run_forever()
+    try:
+        event_loop.run_forever()
+    except KeyboardInterrupt:
+        shutdown()
 
 
 if __name__ == '__main__':

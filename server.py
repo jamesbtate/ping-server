@@ -90,7 +90,11 @@ def main():
     writer = Writer(db_queue, config_parser['server'])
     writer.start()
     asyncio.get_event_loop().run_until_complete(server)
-    asyncio.get_event_loop().run_forever()
+    try:
+        asyncio.get_event_loop().run_forever()
+    except KeyboardInterrupt:
+        logging.warning("Server shutting down.")
+        writer.stop()
 
 
 if __name__ == '__main__':
