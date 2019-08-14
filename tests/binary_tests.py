@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import datetime
 import logging
 import struct
 import random
@@ -88,21 +89,28 @@ def test_read_n_records(filename, n):
     start = time.time()
     f = open(filename, 'rb')
     count = 0
+    all_values = []
     while True:
         data = f.read(record_size * n)
         if not data:
             break
         if len(data) == record_size * 1000:
             values_list = record_struct_1000.unpack(data)
+            for i in range(0, len(values_list), 2):
+                all_values.append([values_list[i], values_list[i+1]])
             count += 1000
         else:
             for i in range(0, len(data), record_size):
                 if i + record_size > len(data):
                     break
                 values = record_struct.unpack(data[i:i+record_size])
+                all_values.append([values[0], values[1]])
                 count += 1
+    for record in all_values:
+        record[0] = datetime.datetime.fromtimestamp(record[0])
     stop = time.time()
-    logging.info("Read %s records in %.3f seconds", count, stop - start)
+    logging.info("Read %i (%i) records in %.3f seconds",
+                 count, len(all_values), stop - start)
     logging.info("Last values: time:%i latency:%i", values[0], values[1])
     f.close()
 
