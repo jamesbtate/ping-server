@@ -36,7 +36,7 @@
     <a href="/graph/{{ pair_id }}?window=1w">Last Week</a>
 </p>
 <h3>Debug</h3>
-<p>Data retrieval time: {{ retrieve_time }} seconds</p>
-<p>Graph draw time: {{ draw_time }} seconds</p>
+<p>Data retrieval time: {{ "%0.3f" % retrieve_time }} seconds</p>
+<p>Graph draw time: {{ "%0.3f" % draw_time }} seconds</p>
 </body>
 </html>

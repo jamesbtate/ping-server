@@ -19,6 +19,7 @@ from datafile import Datafile
 
 class DatabaseBinary(Database):
     DEFAULT_MAX_RECORDS = 604800
+    
     def __init__(self, db_params):
         self.db_params = db_params
         self.connection = None

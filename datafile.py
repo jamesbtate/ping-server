@@ -7,6 +7,7 @@ import struct
 import logging
 from database import Database
 
+
 class Datafile(object):
     """ This class will be a factory.
 
@@ -202,12 +203,17 @@ class Datafile(object):
         return records
 
     def read_all_records(self):
+        """ Read all records from a file in order.
+
+            Returns: a list of records, each represented as a list of epoch
+            timestamp and decoded latency.
+            Example: [[timestamp, decoded latency],...]
+        """
         all_records = []
         self.file.seek(self.offset)
         remaining_records = self.number_of_records
         while True:
             pos = self.file.tell()
-            #if pos >= self.max_file_bytes:
             current_file_length = self.number_of_records * self.record_length \
                                   + self.header_length
             if pos >= current_file_length:
@@ -224,6 +230,54 @@ class Datafile(object):
         logging.debug("Read %i records from %s", len(records), self.file.name)
         return all_records
 
+    def read_n_value_pairs(self, n):
+        """ Read multiple value-pairs at the current position in the file.
+
+            Returns a list of interleaved timestamps and encoded latencies.
+        """
+        data = self.file.read(self.record_length * n)
+        if not data:
+            return []
+        records_read = len(data) // self.record_length
+        if len(data) % self.record_length != 0:
+            logging.warning("Read %i bytes not divisible by record length: %i",
+                            len(data), self.record_length)
+        if records_read != n:
+            logging.warning("Read fewer bytes than expected: %i/%i",
+                            len(data), n * self.record_length)
+        read_struct = self.get_multiple_record_struct(len(data) //
+                                                      self.record_length)
+        all_values = read_struct.unpack(data)
+        return all_values
+
+    def read_all_values(self):
+        """ Read all values from a file in order.
+
+            Returns: a list of timestamps interleaved with the encoded latency
+            values.
+        """
+        all_values = []
+        self.file.seek(self.offset)
+        remaining_records = self.number_of_records
+        while True:
+            pos = self.file.tell()
+            current_file_length = self.number_of_records * self.record_length \
+                                  + self.header_length
+            if pos >= current_file_length:
+                self.file.seek(self.header_length)
+                pos = self.header_length
+            bytes_left_to_eof = current_file_length - pos
+            records_left_to_eof = bytes_left_to_eof // self.record_length
+            read = min(1000, records_left_to_eof, remaining_records)
+            values = self.read_n_value_pairs(read)
+            all_values += values
+            remaining_records -= int(len(values) / 2)
+            if remaining_records <= 0:
+                break
+        logging.debug("Read %i value-pairs from %s", len(all_values),
+                      self.file.name)
+        return all_values
+
     def read_records(self, start_time, end_time):
         """ Return the list of records from start to end times, inclusive.
 
@@ -233,26 +287,31 @@ class Datafile(object):
             Sample return:
                 [(epoch-integer, 123), (epoch-integer+1, 65534), ...]
         """
-        records = self.read_all_records()
-        if records[0][0] > end_time:
-            logging.debug("First record was after end_time: %i", end_time)
+        values_list = self.read_all_values()
+        if values_list[0] > end_time:
+            logging.debug("First record (%i) was after end_time: %i",
+                          values_list[0], end_time)
             return []
-        if records[-1][0] < start_time:
-            logging.debug("Last record was before start_time: %i", start_time)
+        if values_list[-2] < start_time:
+            logging.debug("Last record (%i) was before start_time: %i",
+            values_list[-2], start_time)
             return []
         # if we get to this point, we will always return at least one record.
         # don't bother with binary search for now
         first = 0
-        for i in range(len(records)):
-            if records[i][0] >= start_time:
+        for i in range(0, len(values_list), 2):
+            if values_list[i] >= start_time:
                 first = i
                 break
-        last = len(records)
-        for i in range(first + 1, len(records)):
-            if records[i][0] > end_time:
-                last = i - 1
+        last = len(values_list) - 1
+        for i in range(first + 2, len(values_list), 2):
+            if values_list[i] > end_time:
+                last = i
                 break
-        specific_records = records[first:last]
+        specific_records = []
+        for i in range(first, last, 2):
+            latency = Database.short_latency_to_seconds(values_list[i+1])
+            specific_records.append([values_list[i], latency])
         logging.debug("Got %i specific records from %i to %i",
                       len(specific_records), start_time, end_time)
         return specific_records
