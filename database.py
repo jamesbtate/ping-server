@@ -4,6 +4,7 @@ Database abstraction layer
 """
 
 from abc import ABC, abstractmethod
+from functools import lru_cache
 import time
 
 
@@ -56,6 +57,7 @@ class Database(ABC):
         return short_latency
 
     @staticmethod
+    @lru_cache(maxsize=65536)
     def short_latency_to_seconds(short):
         """ Converts an unsigned short [0,65535] to float in [0.0,1.0] or None
 
