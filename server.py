@@ -10,6 +10,7 @@ import asyncio
 import logging
 import queue
 import json
+import os
 
 
 db_queue = None
@@ -67,6 +68,11 @@ def parse_args():
     return args
 
 
+def startup_checks(args):
+    """ Checks the server should do before it is ready to go. """
+    todo = 1
+
+
 def main():
     global db_queue
     args = parse_args()
@@ -82,6 +88,7 @@ def main():
         log_filename = config_parser['server']['log_file']
         logging.basicConfig(filename=log_filename, format=log_format,
                             level=args.log_level)
+    startup_checks(args)
     db_queue = queue.Queue()
     listen_ip = config_parser['server']['ws_address']
     listen_port = int(config_parser['server']['ws_port'])

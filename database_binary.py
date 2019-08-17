@@ -145,9 +145,9 @@ class DatabaseBinary(Database):
             pair_id = self.databaseMysql.make_binary_src_dst_pair(src_ip,
                                                                   dst_ip,
                                                                   binary_file,
-                                                                  DEFAULT_MAX_RECORDS)
+                                                                  DatabaseBinary.DEFAULT_MAX_RECORDS)
             datafile = Datafile.create_new_datafile(pair_id, binary_file,
-                                                    max_records=DEFAULT_MAX_RECORDS)
+                                                    max_records=DatabaseBinary.DEFAULT_MAX_RECORDS)
         self.datafiles[(src_ip, dst_ip)] = datafile
         return datafile
 
