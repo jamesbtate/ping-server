@@ -1,3 +1,4 @@
+cachetools==3.1.1
 Click==7.0
 cycler==0.10.0
 Flask==1.0.2
@@ -13,5 +14,6 @@ pyparsing==2.4.0
 python-dateutil==2.8.0
 pytz==2019.1
 six==1.12.0
+tabulate==0.8.3
 websockets==7.0
 Werkzeug==0.15.2
