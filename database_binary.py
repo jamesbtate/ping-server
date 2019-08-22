@@ -141,7 +141,7 @@ class DatabaseBinary(Database):
             directory = self.db_params['binary_data_directory']
             filename = src_ip + '_' + dst_ip + '_' + str(int(time.time())) \
                 + '.ping'
-            binary_file = os.path.join(directory, filename)
+            binary_file = os.path.abspath(os.path.join(directory, filename))
             pair_id = self.databaseMysql.make_binary_src_dst_pair(src_ip,
                                                                   dst_ip,
                                                                   binary_file,
