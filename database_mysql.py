@@ -25,6 +25,7 @@ class DatabaseMysql(Database):
         c = mysql.connector.connect(user=self.db_params['db_user'],
                                     password=self.db_params['db_pass'],
                                     host=self.db_params['db_host'],
+                                    port=self.db_params['db_port'],
                                     database=self.db_params['db_db'],
                                     charset='utf8'
                                     )

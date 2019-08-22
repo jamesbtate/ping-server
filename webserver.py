@@ -107,9 +107,9 @@ def main():
     global app
     global db
     parse_args()
-    db_params = read_config()['server']
-    db = DatabaseBinary(db_params)
-    app.run(debug=True, host='0.0.0.0')
+    params = read_config()['server']
+    db = DatabaseBinary(params)
+    app.run(debug=True, host=params['web_address'], port=params['web_port'])
 
 
 if __name__ == '__main__':
