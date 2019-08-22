@@ -14,7 +14,8 @@ import time
 import os
 import gc
 
-from flask import Flask, request, render_template, send_from_directory, jsonify
+from flask import Flask, request, render_template, send_from_directory,\
+                  jsonify, send_file
 app = Flask(__name__)
 db = None
 
@@ -52,7 +53,7 @@ def index():
 
 
 @app.route("/graph/<int:pair_id>")
-def graph(pair_id):
+def graph_page(pair_id):
     pair = db.get_src_dst_by_id(pair_id)
     start_time, stop_time = misc.get_time_extents(request.args)
     t = time.time()
@@ -60,19 +61,29 @@ def graph(pair_id):
                                      convert_to_datetime=True)
     statistics = db.calculate_statistics(records)
     retrieve_time = time.time() - t
-    t = time.time()
-    base64_src = graphing.make_graph(pair, records)
-    draw_time = time.time() - t
     data = {
         'pair_id': pair_id,
+        'src': pair['src'],
+        'dst': pair['dst'],
         'start_time': start_time,
         'stop_time': stop_time,
-        'graph_src': base64_src,
         'retrieve_time': retrieve_time,
-        'draw_time': draw_time,
         'statistics': statistics
     }
     return render_template("graph.html", **data)
+
+
+@app.route("/graph_image/<int:pair_id>")
+def graph_image(pair_id):
+    pair = db.get_src_dst_by_id(pair_id)
+    start_time, stop_time = misc.get_time_extents(request.args)
+    records = db.get_poll_data_by_id(pair_id, start=start_time, end=stop_time,
+                                     convert_to_datetime=True)
+    t = time.time()
+    bytes_io = graphing.make_graph_png(pair, records)
+    bytes_io.seek(0)
+    draw_time = time.time() - t
+    return send_file(bytes_io, mimetype='image/png')
 
 
 @app.route("/cache_info/get_poll_data")

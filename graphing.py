@@ -49,16 +49,7 @@ def ping_figure(success_times, success_values, timeout_times,
     return figure
 
 
-def figure_to_base64(figure):
-    """ Save a figure as a base64-encoded PNG suitable for an HTML <img> """
-    bytes_io = io.BytesIO()
-    figure.savefig(bytes_io, format="png")
-    b64_figure = base64.b64encode(bytes_io.getbuffer()).decode('utf-8')
-    output = str.format("data:image/png;charset=utf-8;base64, {}", b64_figure)
-    return output
-
-
-def make_graph(pair, records):
+def make_graph_figure(pair, records):
     """ Make a graph for the given pair and list of records"""
     title = str.format("Ping Results {} to {}", pair['src'], pair['dst'])
     success_times = []
@@ -73,8 +64,28 @@ def make_graph(pair, records):
             success_values.append(record[1] * 1000)
     figure = ping_figure(success_times, success_values, timeout_times,
                          label=title, x_label="Time", y_label="Milliseconds")
-    base64_src = figure_to_base64(figure)
-    # clear the figure and close pyplot to prevent memory leaks
-    figure.clf()
+    return figure
+
+
+def _cleanup():
+    # figure.clf()
     plt.close()
-    return base64_src
+
+
+def make_graph_base64_png(pair, records):
+    figure = make_graph_figure(pair, records)
+    bytes_io = io.BytesIO()
+    figure.savefig(bytes_io, format="png")
+    b64_figure = base64.b64encode(bytes_io.getbuffer()).decode('utf-8')
+    output = str.format("data:image/png;charset=utf-8;base64, {}", b64_figure)
+    # clear the figure and close pyplot to prevent memory leaks
+    _cleanup()
+    return output
+
+
+def make_graph_png(pair, records):
+    figure = make_graph_figure(pair, records)
+    bytes_io = io.BytesIO()
+    figure.savefig(bytes_io, format="png")
+    _cleanup()
+    return bytes_io
