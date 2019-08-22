@@ -1,10 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Ping Dashboard</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}Ping Dashboard{% endblock %}
+{% block body %}
 <h1>Ping Dashboard</h1>
 <h3>Source-Destination Pairs</h3>
 <table>
@@ -30,5 +26,4 @@
     <li><a href="/cache_info/get_poll_data">Cache Info</a></li>
     <li><a href="/gc">Collect Garbage </a></li>
 </ul>
-</body>
-</html>
+{% endblock %}

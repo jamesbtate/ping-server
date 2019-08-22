@@ -25,10 +25,15 @@ def hello():
     return "Hello World!"
 
 
+@app.route('/static/<filename>')
+def static_file(filename):
+    return send_from_directory(os.path.join(app.root_path, 'static'),
+                               filename)
+
+
 @app.route('/favicon.ico')
 def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'static'),
-                               'favicon.ico')
+    return static_file('favicon.ico')
 
 
 @app.route("/")

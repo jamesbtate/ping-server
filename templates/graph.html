@@ -1,14 +1,6 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Graph</title>
-    <style>
-        body {
-            background-color: #DDDDDD;
-        }
-    </style>
-</head>
+{% extends "base.html" %}
+{% block title %}Graph{% endblock %}
+{% block body %}
 <body>
 <a href="/">Home</a>
 <h2>{{ src }} to {{ dst }}</h2>
@@ -40,5 +32,5 @@
 <h3>Debug</h3>
 <p>Data retrieval time: {{ "%0.3f" % retrieve_time }} seconds</p>
 {# <p>Graph draw time: {{ "%0.3f" % draw_time }} seconds</p> #}
-</body>
-</html>
+
+{% endblock %}
