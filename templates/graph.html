@@ -29,6 +29,15 @@
     <a href="/graph/{{ pair_id }}?window=1d">Last Day</a>
     <a href="/graph/{{ pair_id }}?window=1w">Last Week</a>
 </p>
+<p>
+    <label for="start">Start Time:</label>
+    <input type="text" name="start" id="start" data-initial="{{ start_time }}" class="timepicker"/>
+    <input type="hidden" name="start_alt" id="start_alt" />
+    <label for="stop">Stop Time:</label>
+    <input type="text" name="stop" id="stop" data-initial="{{ stop_time }}" class="timepicker"/>
+    <input type="hidden" name="stop_alt" id="stop_alt" />
+    <input type="submit" value="Go" id="go"/>
+</p>
 <h3>Debug</h3>
 <p>Data retrieval time: {{ "%0.3f" % retrieve_time }} seconds</p>
 {# <p>Graph draw time: {{ "%0.3f" % draw_time }} seconds</p> #}
