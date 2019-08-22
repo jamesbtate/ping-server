@@ -62,6 +62,8 @@ class DatabaseMysql(Database):
                 logging.info("MySQL server went away. Reconnecting...")
             elif e.errno == 2013:
                 logging.info("Lost connection to MySQL server. Reconnecting...")
+            elif e.errno == 2055:
+                logging.info("Lost connection to MySQL server. Broken Pipe. Reconnecting...")
             else:
                 raise
             self._connect_db()
