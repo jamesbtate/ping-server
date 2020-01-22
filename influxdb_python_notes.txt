@@ -1,0 +1,91 @@
+Python 3.6.8 (default, Aug  7 2019, 17:28:10)
+[GCC 4.8.5 20150623 (Red Hat 4.8.5-39)] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import influxdb
+>>> from influxdb
+influxdb
+>>> from influxdb import I
+IOError(            ImportWarning(      IndexError(         IsADirectoryError(
+ImportError(        IndentationError(   InterruptedError(
+>>> from influxdb import InfluxDBClient
+>>> points = [
+...     {
+...         "measurement": "latency",
+...         "tags": {
+...             "probe": "prober_1",
+...             "destination": "192.168.123.45"
+...         },
+...         "time": "2020-01-21T21:05:00",
+...         "fields": {
+...             "value": 67
+...         }
+...     }
+... ]
+>>> points
+[{'measurement': 'latency', 'tags': {'probe': 'prober_1', 'destination': '192.168.1'time': '2020-01-21T21:05:00', 'fields': {'value': 67}}]
+>>> client = InfluxDBClient('localhost', 8086, 'root', 'root', 'example')
+>>> client.create_
+client.create_continuous_query(  client.create_retention_policy(
+client.create_database(          client.create_user(
+>>> client.create_database('ping')
+>>> client = InfluxDBClient('localhost', 8086, 'root', 'root', 'ping')
+>>> client.write_points(points)
+True
+>>> result = client.query('SELECT value FROM latency')
+>>> result
+ResultSet({'('latency', None)': [{'time': '2020-01-21T21:05:00Z', 'value': 67}]})
+>>> client.ping()
+'1.7.7'
+>>> points
+[{'measurement': 'latency', 'tags': {'probe': 'prober_1', 'destination': '192.168.123.45'}, 'time': '2020-01-21T21:05:00', 'fields': {'value': 67}}]
+>>> points2 = points[:]
+>>> point2 = points[0]
+>>> import copy
+>>> point = points[0]
+>>> point2 = copy.deepcopy(point)
+>>> point2['tags']
+{'probe': 'prober_1', 'destination': '192.168.123.45'}
+>>> point2['tags']['destination'] = '8.8.8.8'
+>>> point
+{'measurement': 'latency', 'tags': {'probe': 'prober_1', 'destination': '192.168.123.45'}, 'time': '2020-01-21T21:05:00', 'fields': {'value': 67}}
+>>> point2
+{'measurement': 'latency', 'tags': {'probe': 'prober_1', 'destination': '8.8.8.8'}, 'time': '2020-01-21T21:05:00', 'fields': {'value': 67}}
+>>> [point2]
+[{'measurement': 'latency', 'tags': {'probe': 'prober_1', 'destination': '8.8.8.8'}, 'time': '2020-01-21T21:05:00', 'fields': {'value': 67}}]
+>>> client.write_points([point2])
+True
+>>> result = client.query('SELECT value FROM latency')
+>>> result
+ResultSet({'('latency', None)': [{'time': '2020-01-21T21:05:00Z', 'value': 67}, {'time': '2020-01-21T21:05:00Z', 'value': 67}]})
+>>> print(result)
+ResultSet({'('latency', None)': [{'time': '2020-01-21T21:05:00Z', 'value': 67}, {'time': '2020-01-21T21:05:00Z', 'value': 67}]})
+>>> result.
+result.error                  result.keys(
+result.get_points(            result.point_from_cols_vals(
+result.items(                 result.raw
+>>> result.items
+<bound method ResultSet.items of ResultSet({'('latency', None)': [{'time': '2020-01-21T21:05:00Z', 'value': 67}, {'time': '2020-01-21T21:05:00Z', 'value': 67}]})>
+>>> result.get_points()
+<generator object ResultSet.get_points at 0x7f3b8dcc5db0>
+>>> result.raw
+{'statement_id': 0, 'series': [{'name': 'latency', 'columns': ['time', 'value'], 'values': [['2020-01-21T21:05:00Z', 67], ['2020-01-21T21:05:00Z', 67]]}]}
+>>> client.query('SELECT count(*) from latency')
+ResultSet({'('latency', None)': [{'time': '1970-01-01T00:00:00Z', 'count_value': 2}]})
+>>> client.query('SELECT count(*) from latency group by "destination"')
+ResultSet({'('latency', {'destination': '192.168.123.45'})': [{'time': '1970-01-01T00:00:00Z', 'count_value': 1}], '('latency', {'destination': '8.8.8.8'})': [{'time': '1970-01-01T00:00:00Z', 'count_value': 1}]})
+>>> point3 = copy.deepcopy(point)
+>>> point3
+{'measurement': 'latency', 'tags': {'probe': 'prober_1', 'destination': '192.168.123.45'}, 'time': '2020-01-21T21:05:00', 'fields': {'value': 67}}
+>>> point3['fields']['value']=89
+>>> client.write_points([point3])
+True
+>>> client.query('SELECT count(*) from latency group by "destination"')
+ResultSet({'('latency', {'destination': '192.168.123.45'})': [{'time': '1970-01-01T00:00:00Z', 'count_value': 1}], '('latency', {'destination': '8.8.8.8'})': [{'time': '1970-01-01T00:00:00Z', 'count_value': 1}]})
+>>> point3['time'] = '2020-01-21T21:19:00'
+>>> client.write_points([point])
+True
+>>> client.write_points([point3])
+True
+>>> client.query('SELECT count(*) from latency group by "destination"')
+ResultSet({'('latency', {'destination': '192.168.123.45'})': [{'time': '1970-01-01T00:00:00Z', 'count_value': 2}], '('latency', {'destination': '8.8.8.8'})': [{'time': '1970-01-01T00:00:00Z', 'count_value': 1}]})
+>>>

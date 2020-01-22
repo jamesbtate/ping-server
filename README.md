@@ -2,7 +2,26 @@
 
 A distributed application for running constant pings against hosts and logging the results. Used for network and system monitoring. Probes can be run on multiple systems with results stored on the master for testing from multiple locations.
 
-## Usage
+## Setup
+1. Make some directories:
+  1. `mkdir /opt/ping`
+  2. `mkdir /opt/ping/influxdb`
+2. Create docker network
+  1. `docker network create ping`
+3. Create ping user
+  1. `useradd -d /opt/ping ping`
+4. Directory permissions
+  1. `chown -R ping:ping /opt/ping`
+5. Setup user/group mapping. Skipping this for now and just running as root.
+  1. Modify /etc/subuid and /etc/subgid
+  2. Modify /etc/docker/daemon.json to remap the users. This has implications for other containers on the system.
+6. Create container
+  1. `docker create --name ping_influxdb -p 8086:8086 -v /opt/ping/influxdb/:/var/lib/influxdb influxdb`
+7. Start container
+  1. `docker start ping_influxdb`
+
+
+## Old Usage
 1. Create a database and user for the ping recorder.
     ```
     create database ping;
