@@ -1,0 +1,9 @@
+# Don't copy these files to image
+.git/
+.idea/
+data/
+old/
+__pycache__/
+venv/
+*.log
+nohup.out
