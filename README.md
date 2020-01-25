@@ -20,7 +20,7 @@ A distributed application for running constant pings against hosts and logging t
 7. Start container
   1. `docker start ping_influxdb`
 8. Build docker images. This will take a while the first time (mostly C and C++ compilation of numpy and matplotlib)
-  1. `docker build -t ping-web .`
+  1. `./docker_build.bash`
 
 
 ## Old Usage

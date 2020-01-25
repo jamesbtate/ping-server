@@ -1,0 +1,7 @@
+FROM ping:base
+
+WORKDIR /app
+
+COPY . /app
+
+CMD ["python", "server.py"]

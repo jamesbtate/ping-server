@@ -8,7 +8,3 @@ RUN BUILD_DEPS='pkgconfig freetype-dev musl-dev gcc g++' \
     && apk add $BUILD_DEPS \
     && pip install -r requirements.txt \
     && apk del $BUILD_DEPS
-
-COPY . /app
-
-CMD ["python", "webserver.py"]
