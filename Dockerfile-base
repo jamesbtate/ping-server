@@ -1,10 +1,12 @@
-FROM python:3.8-alpine
+FROM python:3.7-slim
 
 COPY requirements.txt /app/requirements.txt
 WORKDIR /app
 
-RUN BUILD_DEPS='pkgconfig freetype-dev musl-dev gcc g++' \
-    && apk update \
-    && apk add $BUILD_DEPS \
-    && pip install -r requirements.txt \
-    && apk del $BUILD_DEPS
+#RUN BUILD_DEPS='pkgconfig freetype-dev musl-dev gcc g++' \
+#    && apk update \
+#    && apk add $BUILD_DEPS \
+#    && pip install -r requirements.txt \
+#    && apk del $BUILD_DEPS
+
+RUN pip install -r requirements.txt
