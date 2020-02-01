@@ -18,19 +18,22 @@ class DatabaseMysql(Database):
         self.cursor = None
         super().__init__()
         self.db_params = db_params
-        self._connect_db()
         self.src_dst_pairs = {}
+        self._connect_db()
 
     def _connect_db(self):
-        c = mysql.connector.connect(user=self.db_params['db_user'],
-                                    password=self.db_params['db_pass'],
-                                    host=self.db_params['db_host'],
-                                    port=self.db_params['db_port'],
-                                    database=self.db_params['db_db'],
-                                    charset='utf8'
-                                    )
-        self.connection = c
-        self.cursor = self.connection.cursor(dictionary=True)
+        try:
+            c = mysql.connector.connect(user=self.db_params['db_user'],
+                                        password=self.db_params['db_pass'],
+                                        host=self.db_params['db_host'],
+                                        port=self.db_params['db_port'],
+                                        database=self.db_params['db_db'],
+                                        charset='utf8'
+                                        )
+            self.connection = c
+            self.cursor = self.connection.cursor(dictionary=True)
+        except DatabaseError as e:
+            logging.error(str(e))
 
     @staticmethod
     def time_to_mysql(t):
@@ -38,6 +41,28 @@ class DatabaseMysql(Database):
         if type(t) == float or type(t) == int:
             t = time.localtime(t)
         return time.strftime('%Y-%m-%d %H:%M:%S', t)
+
+    def execute(self, query, params=None):
+        """ Wrapper for executing queries that recovers from some errors. """
+        if self.cursor is None:
+            try:
+                self._connect_db()
+            except DatabaseError as e:
+                logging.error(str(e))
+                raise
+        try:
+            self.cursor.execute(query, params)
+        except DatabaseError or OperationalError as e:
+            if e.errno == 2006:
+                logging.info("MySQL server went away. Reconnecting...")
+            elif e.errno == 2013:
+                logging.info("Lost connection to MySQL server. Reconnecting...")
+            elif e.errno == 2055:
+                logging.info("Lost connection to MySQL server. Broken Pipe. Reconnecting...")
+            else:
+                raise
+            self._connect_db()
+            self.execute(query, params)
 
     def execute_commit(self, query, params=None):
         """ Wrapper for execute + commit. """
@@ -53,22 +78,6 @@ class DatabaseMysql(Database):
         rows = self.cursor.fetchall()
         self.connection.commit()
         return rows
-
-    def execute(self, query, params=None):
-        """ Wrapper for executing queries that recovers from some errors. """
-        try:
-            self.cursor.execute(query, params)
-        except DatabaseError or OperationalError as e:
-            if e.errno == 2006:
-                logging.info("MySQL server went away. Reconnecting...")
-            elif e.errno == 2013:
-                logging.info("Lost connection to MySQL server. Reconnecting...")
-            elif e.errno == 2055:
-                logging.info("Lost connection to MySQL server. Broken Pipe. Reconnecting...")
-            else:
-                raise
-            self._connect_db()
-            self.execute(query, params)
 
     def get_src_dst_pairs(self):
         query = "SELECT id,INET_NTOA(src) AS src,INET_NTOA(dst) AS dst " + \

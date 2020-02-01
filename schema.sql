@@ -1,3 +1,4 @@
+USE `ping`;
 CREATE TABLE `src_dst` (
   `id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `src` int(10) unsigned NOT NULL,
