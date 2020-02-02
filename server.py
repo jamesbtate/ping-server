@@ -16,9 +16,9 @@ import os
 db_queue = None
 
 
-def read_config():
+def read_config(filename):
     parser = configparser.ConfigParser(allow_no_value=True)
-    parser.read('ping.conf')
+    parser.read(filename)
     return parser
 
 
@@ -58,6 +58,8 @@ def listen(websocket, path):
 def parse_args():
     description = "Record ping results to some database."
     parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('-c', '--config-file', default='ping.conf',
+                        help="Path to config file. Default is ./ping.conf")
     parser.add_argument('-f', '--foreground', action='store_true',
                         help="Run in foreground and log to stderr.")
     parser.add_argument('-d', '--debug', dest='log_level',
@@ -79,7 +81,7 @@ def main():
     logger = logging.getLogger('websockets.server')
     logger.setLevel(logging.ERROR)
     logger.addHandler(logging.StreamHandler())
-    config_parser = read_config()
+    config_parser = read_config(args.config_file)
     log_format = '%(asctime)s %(levelname)s:%(module)s:%(funcName)s# ' \
                  + '%(message)s'
     if args.foreground:
@@ -88,6 +90,7 @@ def main():
         log_filename = config_parser['server']['log_file']
         logging.basicConfig(filename=log_filename, format=log_format,
                             level=args.log_level)
+    logging.debug("Read config file: %s", args.config_file)
     startup_checks(args)
     db_queue = queue.Queue()
     listen_ip = config_parser['server']['ws_address']
