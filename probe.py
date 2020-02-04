@@ -305,7 +305,7 @@ def _ping(hosts, output):
 
 @asyncio.coroutine
 def transmit_loop(config_parser):
-    # generate
+    """ async loop for transmitting pings data to collector """
     id = random.randint(0, 2**40)
     while keep_going:
         url = config_parser['probe']['ws_url']
@@ -368,6 +368,8 @@ def setup_signal_handler():
 def parse_args():
     description = "Ping stuff and send the responses to a recording server."
     parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('-c', '--config-file', default='ping.conf',
+                        help="Path to config file. Default is ./ping.conf")
     parser.add_argument('-f', '--foreground', action='store_true',
                         help="Run in foreground and log to stderr.")
     parser.add_argument('-d', '--debug', dest='log_level',
@@ -399,13 +401,14 @@ def main():
     log_format = '%(asctime)s %(levelname)s:%(module)s:%(funcName)s# ' \
                  + '%(message)s'
     config_parser = configparser.ConfigParser(allow_no_value=True)
-    config_parser.read('ping.conf')
+    config_parser.read(args.config_file)
     if args.foreground:
         logging.basicConfig(format=log_format, level=args.log_level)
     else:
         log_filename = config_parser['probe']['log_file']
         logging.basicConfig(filename=log_filename, format=log_format,
                             level=args.log_level)
+    logging.debug("Read config file: %s", args.config_file)
     setup_signal_handler()
     output_queue = queue.Queue()
     event_loop = asyncio.get_event_loop()
