@@ -172,6 +172,7 @@ class Pinger(object):
                 msg = "Warning: iteration took longer than one second {:.2f}"
                 msg = msg.format(time_left * -1 + 1)
                 logging.warning(msg)
+        logging.info("Exited ping loop in Pinger:run()")
 
     def send_one_ping(self, current_socket, destination):
         """
@@ -314,7 +315,7 @@ def transmit_loop(config_parser):
             websocket = yield from websockets.connect(url)
         except OSError as e:
             logging.error("Error connecting to websocket: %s", str(e))
-            yield from asyncio.sleep(10)
+            yield from asyncio.sleep(1)
             continue
         try:
             while keep_going:
@@ -360,6 +361,7 @@ def shutdown():
 
 def setup_signal_handler():
     signal.signal(signal.SIGINT, signal_handler)   # Handle Ctrl-C
+    signal.signal(signal.SIGTERM, signal_handler)  # Handle container stop
     if hasattr(signal, "SIGBREAK"):
         # Handle Ctrl-Break e.g. under Windows
         signal.signal(signal.SIGBREAK, signal_handler)
