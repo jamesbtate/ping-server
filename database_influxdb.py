@@ -19,17 +19,26 @@ from database_mysql import DatabaseMysql
 from datafile import Datafile
 
 
-class DatabaseBinary(Database):
-    DEFAULT_MAX_RECORDS = 604800
-    
+TIMEOUT_VALUE = 127.0  # magic value indicating probe timed out
+LATENCY_PRECISION = 4  # number of decimals on the latency value (seconds)
+                       #  4 means #.#### seconds is the latency precision
+                       #  which is precise to 100us (0.1ms)
+
+
+class DatabaseInfluxDB(Database):
     def __init__(self, db_params):
         self.db_params = db_params
         self.client = None
         super().__init__()
         self.databaseMysql = DatabaseMysql(db_params)
-        client = InfluxDBClient(db_params['influxdb_host'], db_params['influxdb_port'], db_params['influxdb_user'],
-                                db_params['influxdb_pass'], db_params['influxdb_db'])
-        client.create_database('ping')  # this does nothing if the DB already exists. I think.
+        self.client = InfluxDBClient(db_params['influxdb_host'],
+                                     db_params['influxdb_port'],
+                                     db_params['influxdb_user'],
+                                     db_params['influxdb_pass'],
+                                     db_params['influxdb_db'])
+        logging.info("Connected to InfluxDB @ %s", db_params['influxdb_host'])
+        # this does nothing if the DB already exists. I think.
+        self.client.create_database('ping')
         # self.cache = LRUCache(maxsize=1048576, getsizeof=len)
 
     def get_src_dst_pairs(self):
@@ -125,6 +134,10 @@ class DatabaseBinary(Database):
 
     def record_poll_data(self, src_ip, dst_ip, send_time, receive_time):
         """ Record results of a single poll in the database. """
+        if receive_time is None:
+            latency = TIMEOUT_VALUE
+        else:
+            latency = round(receive_time - send_time, LATENCY_PRECISION)
         point = {
             "measurement": "icmp-echo",
             "tags": {
@@ -132,9 +145,9 @@ class DatabaseBinary(Database):
                 "src_ip": src_ip,
                 "dst_ip": dst_ip
             },
-            "time": send_time,
+            "time": int(send_time),
             "fields": {
-                "latency": receive_time - send_time
+                "latency": latency
             }
         }
         self.client.write_points([point])

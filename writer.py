@@ -7,7 +7,7 @@ import datetime
 import logging
 import queue
 from database_mysql import DatabaseMysql
-from database_binary import DatabaseBinary
+from database_influxdb import DatabaseInfluxDB
 
 
 class Writer(threading.Thread):
@@ -15,7 +15,7 @@ class Writer(threading.Thread):
         threading.Thread.__init__(self)
         self.db_queue = db_queue
         # self.db = DatabaseMysql(db_params)
-        self.db = DatabaseBinary(db_params)
+        self.db = DatabaseInfluxDB(db_params)
         self.keep_going = True
 
     def stop(self):
