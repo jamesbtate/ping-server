@@ -39,6 +39,7 @@ class DatabaseInfluxDB(Database):
         logging.info("Connected to InfluxDB @ %s", db_params['influxdb_host'])
         # this does nothing if the DB already exists. I think.
         self.client.create_database('ping')
+        self.client.alter_retention_policy('autogen', duration='4w', shard_duration='1d')
         # self.cache = LRUCache(maxsize=1048576, getsizeof=len)
 
     def get_src_dst_pairs(self):
@@ -55,7 +56,7 @@ class DatabaseInfluxDB(Database):
         Maintains a cache of src-dst pairs in memory.
 
         Returns the ID of src-dst pair. """
-        pass
+        return self.databaseMysql.src_dst_id(src, dst)
 
     def get_poll_counts_by_pair(self):
         pass
@@ -75,14 +76,16 @@ class DatabaseInfluxDB(Database):
             A latency value of None indicates a timeout.
         """
         if end is None:
-            end = time.time()
+            end = int(time.time())
         if start is None:
             start = end - 3601
-        datafile = self.get_datafile_handle(pair_id)
-        records = datafile.read_records(start, end)
-        if convert_to_datetime:
-            for record in records:
-                record[0] = datetime.datetime.fromtimestamp(record[0])
+        src_dst = self.get_src_dst_by_id(pair_id)
+        src_ip = src_dst['src']
+        dst_ip = src_dst['dst']
+        records = self.read_records(src_ip, dst_ip, start, end)
+        # if convert_to_datetime:
+        #     for record in records:
+        #         record[0] = datetime.datetime.fromtimestamp(record[0])
         return records
 
     @staticmethod
@@ -108,7 +111,7 @@ class DatabaseInfluxDB(Database):
         mean = 0.0
         success_rate = 0.0
         for record in records:
-            latency = record[1]
+            latency = record['latency']
             if latency is None:
                 timeouts += 1
                 continue
@@ -134,6 +137,8 @@ class DatabaseInfluxDB(Database):
 
     def record_poll_data(self, src_ip, dst_ip, send_time, receive_time):
         """ Record results of a single poll in the database. """
+        # do this to make sure there is a record created in the MySQL DB for this pair.
+        pair_id = self.src_dst_id()
         if receive_time is None:
             latency = TIMEOUT_VALUE
         else:
@@ -150,25 +155,7 @@ class DatabaseInfluxDB(Database):
                 "latency": latency
             }
         }
-        self.client.write_points([point])
-
-    def get_file_modification_time(self, path, iso8601=False):
-        """ Returns the UNIX time of when a file was last modified.
-
-            Arguments:
-                path: path to the file on the filesystem
-
-            Returns a float for the UNIX/epoch time of file modification.
-            If iso8601 is True, return a formatted string instead.
-            May raise an error if the file cannot be stat-ed.
-        """
-        mtime = os.stat(path).st_mtime
-        if iso8601:
-            dt = datetime.datetime.fromtimestamp(mtime)
-            date_string = dt.isoformat()
-            return date_string
-        else:
-            return mtime
+        self.client.write_points([point], time_precision='s')
 
     def read_record(self):
         """ Read a data record at the current position in the file.
@@ -180,121 +167,24 @@ class DatabaseInfluxDB(Database):
         latency = Database.short_latency_to_seconds(record[1])
         return [record[0], latency]
 
-    def read_n_records(self, n):
-        """ Read multiple records at the current position in the file.
-
-            Returns a list of lists: one sublist for each decoded record
-        """
-        records = []
-        data = self.file.read(self.record_length * n)
-        if not data:
-            return records
-        records_read = len(data) // self.record_length
-        if len(data) % self.record_length != 0:
-            logging.warning("Read %i bytes not divisible by record length: %i",
-                            len(data), self.record_length)
-        if records_read != n:
-            logging.warning("Read fewer bytes than expected: %i/%i",
-                            len(data), n * self.record_length)
-        read_struct = self.get_multiple_record_struct(len(data) //
-                                                      self.record_length)
-        all_values = read_struct.unpack(data)
-        for i in range(records_read):
-            epoch = all_values[i * 2]
-            latency = Database.short_latency_to_seconds(all_values[i * 2 + 1])
-            records.append([epoch, latency])
-        return records
-
-    def read_all_records(self):
-        """ Read all records from a file in order.
-
-            Returns: a list of records, each represented as a list of epoch
-            timestamp and decoded latency.
-            Example: [[timestamp, decoded latency],...]
-        """
-        all_records = []
-        self.file.seek(self.offset)
-        remaining_records = self.number_of_records
-        while True:
-            pos = self.file.tell()
-            current_file_length = self.number_of_records * self.record_length \
-                                  + self.header_length
-            if pos >= current_file_length:
-                self.file.seek(self.header_length)
-                pos = self.header_length
-            bytes_left_to_eof = current_file_length - pos
-            records_left_to_eof = bytes_left_to_eof // self.record_length
-            read = min(1000, records_left_to_eof, remaining_records)
-            records = self.read_n_records(read)
-            all_records += records
-            remaining_records -= len(records)
-            if remaining_records <= 0:
-                break
-        logging.debug("Read %i records from %s", len(records), self.file.name)
-        return all_records
-
-    def read_all_values(self):
-        """ Read all values from a file in order.
-
-            Returns: a list of timestamps interleaved with the encoded latency
-            values.
-        """
-        all_values = []
-        self.file.seek(self.offset)
-        remaining_records = self.number_of_records
-        while True:
-            pos = self.file.tell()
-            current_file_length = self.number_of_records * self.record_length \
-                                  + self.header_length
-            if pos >= current_file_length:
-                self.file.seek(self.header_length)
-                pos = self.header_length
-            bytes_left_to_eof = current_file_length - pos
-            records_left_to_eof = bytes_left_to_eof // self.record_length
-            read = min(1000, records_left_to_eof, remaining_records)
-            values = self.read_n_value_pairs(read)
-            all_values += values
-            remaining_records -= int(len(values) / 2)
-            if remaining_records <= 0:
-                break
-        logging.debug("Read %i value-pairs from %s", len(all_values),
-                      self.file.name)
-        return all_values
-
-    def read_records(self, start_time, end_time):
+    def read_records(self, src_ip, dst_ip, start_time, end_time):
         """ Return the list of records from start to end times, inclusive.
 
             start_time and end_time are UNIX epoch seconds.
             If there are no records within the time range, [] is returned.
 
             Sample return:
-                [(epoch-integer, 123), (epoch-integer+1, 65534), ...]
+                [{'1970-01-01T12:34:56}, 0.0123}, {...}, ...]
         """
-        values_list = self.read_all_values()
-        if values_list[0] > end_time:
-            logging.debug("First record (%i) was after end_time: %i",
-                          values_list[0], end_time)
-            return []
-        if values_list[-2] < start_time:
-            logging.debug("Last record (%i) was before start_time: %i",
-            values_list[-2], start_time)
-            return []
-        # if we get to this point, we will always return at least one record.
-        # don't bother with binary search for now
-        first = 0
-        for i in range(0, len(values_list), 2):
-            if values_list[i] >= start_time:
-                first = i
-                break
-        last = len(values_list) - 1
-        for i in range(first + 2, len(values_list), 2):
-            if values_list[i] > end_time:
-                last = i
-                break
-        specific_records = []
-        for i in range(first, last, 2):
-            latency = Database.short_latency_to_seconds(values_list[i+1])
-            specific_records.append([values_list[i], latency])
-        logging.debug("Got %i specific records from %i to %i",
-                      len(specific_records), start_time, end_time)
-        return specific_records
+        query = 'SELECT "latency" FROM "icmp-echo" WHERE src_ip=$src_ip AND ' + \
+                'dst_ip=$dst_ip AND time>=$start_time AND time<=$end_time'
+        params = {
+            'src_ip': src_ip,
+            'dst_ip': dst_ip,
+            'start_time': start_time,
+            'end_time': end_time
+        }
+        result_set = self.client.query(query, bind_params=params)
+        points = list(result_set.get_points())
+        logging.debug("Got %i records from %i to %i", len(points), start_time, end_time)
+        return points

@@ -113,6 +113,7 @@ class DatabaseMysql(Database):
                      (INET_ATON(%s),INET_ATON(%s))"
             self.execute_commit(query, params)
             pair_id = self.cursor.lastrowid
+            logging.debug("Added pair ID %i to src_dst table", pair_id)
         else:
             result = rows[0]
             pair_id = result['id']

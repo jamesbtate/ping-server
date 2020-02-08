@@ -4,7 +4,7 @@ Webserver for this application...
 """
 
 from database_mysql import DatabaseMysql
-from database_binary import DatabaseBinary
+from database_influxdb import DatabaseInfluxDB
 from server import read_config
 import graphing
 import argparse
@@ -41,8 +41,7 @@ def index():
     pairs = db.get_src_dst_pairs()
     for pair in pairs:
         try:
-            pair['mtime'] = db.get_file_modification_time(pair['binary_file'],
-                                                          iso8601=True)
+            pair['mtime'] = 'unimplemented'
         except FileNotFoundError:
             pair['mtime'] = "File not found"
         except PermissionError:
@@ -110,6 +109,8 @@ def garbage_collect():
 def parse_args():
     description = "Run development webserver for ping project"
     parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('-c', '--config-file', default='ping.conf',
+                        help="Path to config file. Default is ./ping.conf")
     parser.add_argument('-d', '--debug', action='store_true',
                         help="Enable debug-level logging")
     args = parser.parse_args()
@@ -117,14 +118,15 @@ def parse_args():
     logger.setLevel(logging.INFO)
     if args.debug:
         logger.setLevel(logging.DEBUG)
+    return args
 
 
 def main():
     global app
     global db
-    parse_args()
-    params = read_config()['server']
-    db = DatabaseBinary(params)
+    args = parse_args()
+    params = read_config(args.config_file)['server']
+    db = DatabaseInfluxDB(params)
     app.run(debug=True, host=params['web_address'], port=params['web_port'])
 
 
