@@ -43,11 +43,11 @@ class DatabaseInfluxDB(Database):
         # self.cache = LRUCache(maxsize=1048576, getsizeof=len)
 
     def get_src_dst_pairs(self):
-        return self.databaseMysql.get_binary_src_dst_pairs()
+        return self.databaseMysql.get_src_dst_pairs()
 
     def get_src_dst_by_id(self, pair_id):
         """ Gets a source-destination pair from the database by ID number. """
-        return self.databaseMysql.get_binary_src_dst_by_id(pair_id)
+        return self.databaseMysql.get_src_dst_by_id(pair_id)
 
     def src_dst_id(self, src, dst):
         """ Gets the ID of the src-dst pair from the DB, maybe creating the entry.
@@ -83,9 +83,9 @@ class DatabaseInfluxDB(Database):
         src_ip = src_dst['src']
         dst_ip = src_dst['dst']
         records = self.read_records(src_ip, dst_ip, start, end)
-        # if convert_to_datetime:
-        #     for record in records:
-        #         record[0] = datetime.datetime.fromtimestamp(record[0])
+        if convert_to_datetime:
+            for record in records:
+                record['time'] = datetime.datetime.strptime(record['time'], "%Y-%m-%dT%H:%M:%SZ")
         return records
 
     @staticmethod
@@ -112,7 +112,7 @@ class DatabaseInfluxDB(Database):
         success_rate = 0.0
         for record in records:
             latency = record['latency']
-            if latency is None:
+            if latency is None or latency == TIMEOUT_VALUE:
                 timeouts += 1
                 continue
             successes += 1
@@ -138,7 +138,7 @@ class DatabaseInfluxDB(Database):
     def record_poll_data(self, src_ip, dst_ip, send_time, receive_time):
         """ Record results of a single poll in the database. """
         # do this to make sure there is a record created in the MySQL DB for this pair.
-        pair_id = self.src_dst_id()
+        pair_id = self.src_dst_id(src_ip, dst_ip)
         if receive_time is None:
             latency = TIMEOUT_VALUE
         else:
@@ -157,15 +157,9 @@ class DatabaseInfluxDB(Database):
         }
         self.client.write_points([point], time_precision='s')
 
-    def read_record(self):
-        """ Read a data record at the current position in the file.
-
-            Decodes the stored data.
-        """
-        record_bytes = self.file.read(self.record_length)
-        record = self.record_struct.unpack(record_bytes)
-        latency = Database.short_latency_to_seconds(record[1])
-        return [record[0], latency]
+    def last_poll_time_by_pair(self, pair_id):
+        """ Get the last time a particular pair ID was polled. """
+        pass
 
     def read_records(self, src_ip, dst_ip, start_time, end_time):
         """ Return the list of records from start to end times, inclusive.
@@ -176,14 +170,15 @@ class DatabaseInfluxDB(Database):
             Sample return:
                 [{'1970-01-01T12:34:56}, 0.0123}, {...}, ...]
         """
+        start_time = str(int(start_time))
+        end_time = str(int(end_time))
         query = 'SELECT "latency" FROM "icmp-echo" WHERE src_ip=$src_ip AND ' + \
-                'dst_ip=$dst_ip AND time>=$start_time AND time<=$end_time'
+                'dst_ip=$dst_ip AND time>=' + start_time + 's AND time<=' + end_time + 's'
         params = {
             'src_ip': src_ip,
             'dst_ip': dst_ip,
-            'start_time': start_time,
-            'end_time': end_time
         }
+        logging.debug("Querying: %s | %s", query, params)
         result_set = self.client.query(query, bind_params=params)
         points = list(result_set.get_points())
         logging.debug("Got %i records from %i to %i", len(points), start_time, end_time)
