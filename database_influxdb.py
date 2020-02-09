@@ -85,7 +85,8 @@ class DatabaseInfluxDB(Database):
         records = self.read_records(src_ip, dst_ip, start, end)
         if convert_to_datetime:
             for record in records:
-                record['time'] = datetime.datetime.strptime(record['time'], "%Y-%m-%dT%H:%M:%SZ")
+                # record['time'] = datetime.datetime.strptime(record['time'], "%Y-%m-%dT%H:%M:%SZ")
+                record['time'] = datetime.datetime.fromtimestamp(record['time'])
         return records
 
     @staticmethod
@@ -179,7 +180,7 @@ class DatabaseInfluxDB(Database):
             'dst_ip': dst_ip,
         }
         logging.debug("Querying: %s | %s", query, params)
-        result_set = self.client.query(query, bind_params=params)
+        result_set = self.client.query(query, bind_params=params, epoch='s')
         points = list(result_set.get_points())
         logging.debug("Got %i records from %i to %i", len(points), start_time, end_time)
         return points
