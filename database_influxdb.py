@@ -132,7 +132,7 @@ class DatabaseInfluxDB(Database):
                 minimum = latency
             if latency > maximum:
                 maximum = latency
-        if records:
+        if successes:
             mean = total / successes
             success_rate = successes / len(records)
         statistics = {
