@@ -58,8 +58,18 @@ class DatabaseInfluxDB(Database):
         Returns the ID of src-dst pair. """
         return self.databaseMysql.src_dst_id(src, dst)
 
-    def get_poll_counts_by_pair(self):
-        pass
+    def get_poll_counts_by_pair(self, src_ip, dst_ip) -> int:
+        """ Return the number of polls for a specific pair. """
+        query = 'SELECT COUNT(latency) FROM "icmp-echo" WHERE ' + \
+                'src_ip=$src_ip AND dst_ip=$dst_ip'
+        params = {
+            'src_ip': src_ip,
+            'dst_ip': dst_ip,
+        }
+        logging.debug("Querying: %s | %s", query, params)
+        result_set = self.client.query(query, bind_params=params, epoch='s')
+        points = list(result_set.get_points())
+        return points[0]['count']
 
     # @cachedmethod(operator.attrgetter('cache'))
     def get_poll_data_by_id(self, pair_id, start=None, end=None,
@@ -158,9 +168,22 @@ class DatabaseInfluxDB(Database):
         }
         self.client.write_points([point], time_precision='s')
 
-    def last_poll_time_by_pair(self, pair_id):
-        """ Get the last time a particular pair ID was polled. """
-        pass
+    def last_poll_time_by_pair(self, src_ip, dst_ip) -> datetime.datetime:
+        """ Get the last time a particular pair ID was polled.
+
+        Returns a datetime.datetime object.
+        """
+        query = 'SELECT LAST(*) FROM "icmp-echo" WHERE ' + \
+                'src_ip=$src_ip AND dst_ip=$dst_ip'
+        params = {
+            'src_ip': src_ip,
+            'dst_ip': dst_ip,
+        }
+        logging.debug("Querying: %s | %s", query, params)
+        result_set = self.client.query(query, bind_params=params, epoch='s')
+        points = list(result_set.get_points())
+        dt = datetime.datetime.fromtimestamp(points[0]['time'])
+        return dt
 
     def read_records(self, src_ip, dst_ip, start_time, end_time):
         """ Return the list of records from start to end times, inclusive.

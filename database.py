@@ -91,7 +91,7 @@ class Database(ABC):
         pass
 
     @abstractmethod
-    def get_poll_counts_by_pair(self):
+    def get_poll_counts_by_pair(self, src_ip, dst_ip):
         pass
 
     @abstractmethod

@@ -17,7 +17,6 @@ import gc
 from flask import Flask, request, render_template, send_from_directory,\
                   jsonify, send_file
 app = Flask(__name__)
-db = None
 
 
 @app.route("/hello")
@@ -40,16 +39,11 @@ def favicon():
 def index():
     pairs = db.get_src_dst_pairs()
     for pair in pairs:
-        try:
-            pair['mtime'] = 'unimplemented'
-        except FileNotFoundError:
-            pair['mtime'] = "File not found"
-        except PermissionError:
-            pair['mtime'] = "Permission denied"
-    for pair in pairs:
-        # pair['polls'] = [_['count'] for _ in poll_counts if
-        #                 _['src_dst'] == pair['id']][0]
-        pair['polls'] = -7
+        src = pair['src']
+        dst = pair['dst']
+        dt = db.last_poll_time_by_pair(src, dst)
+        pair['mtime'] = dt.isoformat()
+        pair['polls'] = db.get_poll_counts_by_pair(src, dst)
     data = {
         'src_dst_pairs': pairs
     }
