@@ -10,3 +10,5 @@ venv/
 *.data
 data/
 data.*
+*.sqlite
+*.sqlite3

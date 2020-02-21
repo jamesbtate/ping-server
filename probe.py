@@ -332,9 +332,11 @@ def transmit_loop(config_parser):
                 response = json.loads(response_string)
                 if 'id' in response and response['id'] == id-1:
                     continue
-                # if we get here, we did not get confirmation that the message was enqueued.
-                # add the poll data back in to the transmit queue for re-transmission
-                logging.info("Re-enqueueing data that did not transmit successfully.")
+                # if we get here, we did not get confirmation that the
+                # message was enqueued. Add the poll data back in to the
+                # transmit queue for re-transmission.
+                logging.info("Re-enqueueing data that did not transmit "
+                             "successfully.")
                 output_queue.put(data)
         except Exception as e:
             logging.error("Exception in transmit loop: %s", str(e))
