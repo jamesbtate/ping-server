@@ -38,67 +38,12 @@ event_loop = None
 keep_going = True
 
 
-def calculate_checksum(source_string):
-    """
-    A port of the functionality of in_cksum() from ping.c
-    Ideally this would act on the string as a series of 16-bit ints (host
-    packed), but this works.
-    Network data is big-endian, hosts are typically little-endian
-    """
-    countTo = (int(len(source_string) / 2)) * 2
-    sum = 0
-    count = 0
-
-    # Handle bytes in pairs (decoding as short ints)
-    loByte = 0
-    hiByte = 0
-    while count < countTo:
-        if (sys.byteorder == "little"):
-            loByte = source_string[count]
-            hiByte = source_string[count + 1]
-        else:
-            loByte = source_string[count + 1]
-            hiByte = source_string[count]
-        sum = sum + (hiByte * 256 + loByte)
-        count += 2
-
-    # Handle last byte if applicable (odd-number of bytes)
-    # Endianness should be irrelevant in this case
-    if countTo < len(source_string):  # Check for odd length
-        loByte = source_string[len(source_string) - 1]
-        sum += loByte
-
-    sum &= 0xffffffff   # Truncate sum to 32 bits (a variance from ping.c)
-
-    sum = (sum >> 16) + (sum & 0xffff)    # Add high 16 bits to low 16 bits
-    sum += (sum >> 16)                    # Add carry from above (if any)
-    answer = ~sum & 0xffff                # Invert and truncate to 16 bits
-    answer = socket.htons(answer)
-
-    return answer
-
-
-def is_valid_ipv4_address(addr):
-    parts = addr.split(".")
-    if not len(parts) == 4:
-        return False
-    for part in parts:
-        try:
-            number = int(part)
-        except ValueError:
-            return False
-        if number > 255 or number < 0:
-            return False
-    return True
-
-
-def to_ip(addr):
-    if is_valid_ipv4_address(addr):
-        return addr
-    return socket.gethostbyname(addr)
-
-
 class Pinger(object):
+    """ A wrapper class for a thread that pings hosts and adds results to a queue.
+
+    Uses raw IP sockets so it requires root (or some other convoluted privileges).
+    """
+
     def __init__(self, destinations, timeout=500, packet_size=55,
                  output=sys.stdout, own_id=None, sourceaddress=False):
         logging.debug("Initialized Pinger. timeout: %i", timeout)
@@ -116,6 +61,45 @@ class Pinger(object):
         self.seq_number = 0
         self.send_count = 0
         self.receive_count = 0
+
+    def calculate_checksum(self, source_string):
+        """
+        A port of the functionality of in_cksum() from ping.c
+        Ideally this would act on the string as a series of 16-bit ints (host
+        packed), but this works.
+        Network data is big-endian, hosts are typically little-endian
+        """
+        countTo = (int(len(source_string) / 2)) * 2
+        sum = 0
+        count = 0
+
+        # Handle bytes in pairs (decoding as short ints)
+        loByte = 0
+        hiByte = 0
+        while count < countTo:
+            if (sys.byteorder == "little"):
+                loByte = source_string[count]
+                hiByte = source_string[count + 1]
+            else:
+                loByte = source_string[count + 1]
+                hiByte = source_string[count]
+            sum = sum + (hiByte * 256 + loByte)
+            count += 2
+
+        # Handle last byte if applicable (odd-number of bytes)
+        # Endianness should be irrelevant in this case
+        if countTo < len(source_string):  # Check for odd length
+            loByte = source_string[len(source_string) - 1]
+            sum += loByte
+
+        sum &= 0xffffffff  # Truncate sum to 32 bits (a variance from ping.c)
+
+        sum = (sum >> 16) + (sum & 0xffff)  # Add high 16 bits to low 16 bits
+        sum += (sum >> 16)  # Add carry from above (if any)
+        answer = ~sum & 0xffff  # Invert and truncate to 16 bits
+        answer = socket.htons(answer)
+
+        return answer
 
     def header2dict(self, names, struct_format, data):
         """
@@ -192,7 +176,7 @@ class Pinger(object):
 
         # Calculate the checksum on the data and the dummy header.
         # Checksum is in network order
-        checksum = calculate_checksum(header + data)
+        checksum = self.calculate_checksum(header + data)
         # Now that we have the right checksum, we put that in. It's just easier
         # to make up a new header than to stuff it into the dummy.
         header = struct.pack(
