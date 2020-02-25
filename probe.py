@@ -9,7 +9,9 @@ Note that ICMP messages can only be sent from processes running as root
 
 GNU GPL v2 license  -  see LICENSE
 """
-
+from websockets.client import WebSocketClientProtocol as WebSocket
+from asyncio import Queue as AQueue
+from queue import Queue as TQueue
 import configparser
 import websockets
 import threading
@@ -32,6 +34,7 @@ ICMP_ECHOREPLY = 0  # Echo reply (per RFC792)
 ICMP_ECHO = 8  # Echo request (per RFC792)
 ICMP_MAX_RECV = 2048  # Max size of incoming buffer
 MAX_SLEEP = 1000
+MESSAGE_ACK_TIMEOUT = 5.0  # how long to wait (seconds) before re-queueing a message to transmit
 
 output_queue = None
 event_loop = None
@@ -328,6 +331,74 @@ def transmit_loop(config_parser):
             logging.info("Re-enqueueing data after transmit error.")
 
 
+async def transmit_results(results_queue: TQueue, websocket: WebSocket, unconfirmed_list: list):
+    """ Coroutine to send ping results to collector (server) over a websocket.
+
+    JSON-dumps items from the queue and sends them over the websocket. Adds
+    each sent item to the unconfirmed_queue for some other task to verify.
+
+    :param results_queue: thread-safe queue of messages to transmit
+    :param websocket: already connected websocket from websockets package
+    :param unconfirmed_list: a list of unconfirmed transmitted messages
+    :return: None
+    """
+    nonce = random.randint(0, 2 ** 40)
+    while True:
+        try:
+            data = results_queue.get(block=False)
+            logging.debug("Read data from output queue")
+        except queue.Empty:
+            await asyncio.sleep(1.0)
+            continue
+        data['id'] = nonce
+        data['message_transmit_time'] = time.time()
+        nonce += 1
+        await websocket.send(json.dumps(data))
+        await list.append(data)
+
+
+async def receive_messages(websocket: WebSocket, unconfirmed_list: list):
+    """ Coroutine to receive any messages from collector and send to handlers.
+
+    :param websocket: already connected websocket from websockets package
+    :param unconfirmed_list: a list of unconfirmed transmitted messages
+    :return: None
+    """
+    while True:
+        message_string = await websocket.recv()
+        message = json.loads(message_string)
+        try:
+            if message['type'] == 'output_ack':
+                # this magic removes any messages in unconfirmed_list that have the same id
+                #  as the acknowledgement message we just received.
+                unconfirmed_list[:] = [_ for _ in unconfirmed_list if message['id'] != _['id']]
+            else:
+                logging.error("Unknown websocket message type received: %s", message_string)
+        except KeyError:
+            logging.error("received websocket message without type: %s", message_string)
+
+
+async def requeue_stale_messages(unconfirmed_list: list, results_queue: TQueue):
+    """ Re-queue messages in unconfirmed_list if they are not acknowledged.
+
+     Waits MESSAGE_ACK_TIMEOUT seconds before re-queueing.
+
+    :param unconfirmed_list: a list of unconfirmed transmitted messages
+    :param results_queue: thread-safe queue of messages to transmit
+    :return:
+    """
+    while True:
+        stale_cutoff_time = time.time() - MESSAGE_ACK_TIMEOUT
+        await asyncio.sleep(1.0)
+        # it is critical that these two list comprehensions have opposite filters
+        stale_messages = [_ for _ in unconfirmed_list if _['message_transmit_time'] < stale_cutoff_time]
+        unconfirmed_list[:] = [_ for _ in unconfirmed_list if _['message_transmit_time'] >= stale_cutoff_time]
+        for message in stale_messages:
+            if stale_cutoff_time > message['message_transmit_time']:
+                logging.info("Re-enqueueing data that was not acknowledged. id: %s", message['id'])
+                results_queue.put(message)
+
+
 def signal_handler(signum, frame):
     """ Handle exit via signals """
     msg = "(Terminated with signal %d)" % signum
@@ -398,7 +469,7 @@ def main():
                             level=args.log_level)
     logging.debug("Read config file: %s", args.config_file)
     setup_signal_handler()
-    output_queue = queue.Queue()
+    output_queue = TQueue()
     event_loop = asyncio.get_event_loop()
     hosts = ping_targets_from_config(config_parser)
     args = (hosts, output_queue)

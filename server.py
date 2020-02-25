@@ -48,7 +48,7 @@ def listen(websocket, path):
         while True:
             message_string = yield from websocket.recv()
             message_id = handle_message_string(remote_addr, message_string)
-            response = json.dumps({'status': 'enqueued', 'id': message_id})
+            response = json.dumps({'type': 'output_ack', 'status': 'enqueued', 'id': message_id})
             yield from websocket.send(response)
     except websockets.exceptions.ConnectionClosed as e:
         logging.info("Connection from %s:%s closed: %s", remote_addr[0],
