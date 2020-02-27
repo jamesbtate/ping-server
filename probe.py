@@ -36,7 +36,7 @@ ICMP_MAX_RECV = 2048  # Max size of incoming buffer
 MAX_SLEEP = 1000
 MESSAGE_ACK_TIMEOUT = 5.0  # how long to wait (seconds) before re-queueing a message to transmit
 
-output_queue = None
+results_queue = None
 event_loop = None
 keep_going = True
 
@@ -132,10 +132,14 @@ class Pinger(object):
 
     def run(self):
         """ send and receive pings """
-        # self.setup_signal_handler()
+        global keep_going
         start_time = time.time()
         iteration = 0
-        current_socket = self.make_raw_socket()
+        try:
+            current_socket = self.make_raw_socket()
+        except PermissionError:
+            logging.critical("Need root to make a raw socket. Shutting down...")
+            keep_going = False
 
         while keep_going:
             logging.debug("Inside main loop")
@@ -308,7 +312,7 @@ def transmit_loop(config_parser):
             while keep_going:
                 logging.debug("Waiting for data to transmit")
                 try:
-                    data = output_queue.get(timeout=0.5)
+                    data = results_queue.get(timeout=0.5)
                     logging.debug("Read data from output queue")
                 except queue.Empty:
                     continue
@@ -324,11 +328,48 @@ def transmit_loop(config_parser):
                 # transmit queue for re-transmission.
                 logging.info("Re-enqueueing data that did not transmit "
                              "successfully.")
-                output_queue.put(data)
+                results_queue.put(data)
         except Exception as e:
             logging.error("Exception in transmit loop: %s", str(e))
-            output_queue.put(data)
+            results_queue.put(data)
             logging.info("Re-enqueueing data after transmit error.")
+
+
+async def maintain_collector_connection(config_parser: configparser.ConfigParser,
+                                        results_queue: TQueue,
+                                        unconfirmed_list: list):
+    """ Coroutine to connect to collector and re-connect if connection fails.
+
+    Starts the other coroutines and restarts them if they stop.
+
+    :param results_queue: thread-safe queue of messages to transmit
+    :param unconfirmed_list: a list of unconfirmed transmitted messages
+    :return: None
+    """
+    global keep_going
+    url = config_parser['probe']['ws_url']
+    transmit_task = None
+    receive_task = None
+    requeue_task = None
+    while keep_going:
+        logging.info("Connecting to websocket: %s", url)
+        try:
+            websocket = await websockets.connect(url)
+            logging.debug("Connected to websocket %s", url)
+        except OSError as e:
+            logging.error("Error connecting to websocket: %s", str(e))
+            await asyncio.sleep(1)
+            continue
+        while keep_going and websocket.open:
+            if transmit_task is None or transmit_task.done():
+                transmit_task = asyncio.ensure_future(transmit_results(results_queue, websocket, unconfirmed_list))
+            if receive_task is None or receive_task.done():
+                receive_task = asyncio.ensure_future(receive_messages(websocket, unconfirmed_list))
+            if requeue_task is None or requeue_task.done():
+                requeue_task = asyncio.ensure_future(requeue_stale_messages(unconfirmed_list, results_queue))
+            await asyncio.sleep(1)
+        logging.info("websocket died or keep_going is False")
+    logging.info("keep_going is False in maintain_collector_connection()")
 
 
 async def transmit_results(results_queue: TQueue, websocket: WebSocket, unconfirmed_list: list):
@@ -342,8 +383,9 @@ async def transmit_results(results_queue: TQueue, websocket: WebSocket, unconfir
     :param unconfirmed_list: a list of unconfirmed transmitted messages
     :return: None
     """
+    global keep_going
     nonce = random.randint(0, 2 ** 40)
-    while True:
+    while keep_going:
         try:
             data = results_queue.get(block=False)
             logging.debug("Read data from output queue")
@@ -354,7 +396,7 @@ async def transmit_results(results_queue: TQueue, websocket: WebSocket, unconfir
         data['message_transmit_time'] = time.time()
         nonce += 1
         await websocket.send(json.dumps(data))
-        await list.append(data)
+        unconfirmed_list.append(data)
 
 
 async def receive_messages(websocket: WebSocket, unconfirmed_list: list):
@@ -364,14 +406,18 @@ async def receive_messages(websocket: WebSocket, unconfirmed_list: list):
     :param unconfirmed_list: a list of unconfirmed transmitted messages
     :return: None
     """
-    while True:
+    global keep_going
+    while keep_going:
         message_string = await websocket.recv()
         message = json.loads(message_string)
         try:
             if message['type'] == 'output_ack':
                 # this magic removes any messages in unconfirmed_list that have the same id
                 #  as the acknowledgement message we just received.
+                old_len = len(unconfirmed_list)
                 unconfirmed_list[:] = [_ for _ in unconfirmed_list if message['id'] != _['id']]
+                new_len = len(unconfirmed_list)
+                logging.debug("Confirmed %i messages in unconfirmed_list", old_len - new_len)
             else:
                 logging.error("Unknown websocket message type received: %s", message_string)
         except KeyError:
@@ -387,7 +433,8 @@ async def requeue_stale_messages(unconfirmed_list: list, results_queue: TQueue):
     :param results_queue: thread-safe queue of messages to transmit
     :return:
     """
-    while True:
+    global keep_going
+    while keep_going:
         stale_cutoff_time = time.time() - MESSAGE_ACK_TIMEOUT
         await asyncio.sleep(1.0)
         # it is critical that these two list comprehensions have opposite filters
@@ -407,12 +454,16 @@ def signal_handler(signum, frame):
 
 
 def shutdown():
+    logging.debug("Shutting down...")
     global keep_going
     global event_loop
     keep_going = False
+    sleep_time = 2
+    logging.warning("Stopping event loop in %i seconds", sleep_time)
+    time.sleep(sleep_time)
     event_loop.stop()
     logging.warning("Probe shutting down with %i messages in transmit queue.",
-                    output_queue.qsize())
+                    results_queue.qsize())
     # sys.exit(0)
 
 
@@ -454,7 +505,7 @@ def ping_targets_from_config(config):
 
 
 def main():
-    global output_queue
+    global results_queue
     global event_loop
     args = parse_args()
     log_format = '%(asctime)s %(levelname)s:%(module)s:%(funcName)s# ' \
@@ -469,18 +520,20 @@ def main():
                             level=args.log_level)
     logging.debug("Read config file: %s", args.config_file)
     setup_signal_handler()
-    output_queue = TQueue()
-    event_loop = asyncio.get_event_loop()
+    results_queue = TQueue()
+    unconfirmed_list = []
     hosts = ping_targets_from_config(config_parser)
-    args = (hosts, output_queue)
+    args = (hosts, results_queue)
     ping_thread = threading.Thread(target=_ping, args=args)
     logging.info("Starting ping thread")
     ping_thread.start()
     logging.info("Starting event loop")
-    event_loop.create_task(transmit_loop(config_parser))
+    event_loop = asyncio.get_event_loop()
+    main_task = maintain_collector_connection(config_parser, results_queue, unconfirmed_list)
     try:
-        event_loop.run_forever()
+        event_loop.run_until_complete(main_task)
     except KeyboardInterrupt:
+        logging.debug("Caught KeyboardInterrupt in main()")
         shutdown()
 
 
