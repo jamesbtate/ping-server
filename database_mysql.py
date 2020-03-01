@@ -4,7 +4,10 @@ Database abstraction layer
 """
 
 import mysql.connector
+from mysql.connector import MySQLConnection
 from mysql.connector.errors import DatabaseError, OperationalError
+from mysql.connector.cursor import MySQLCursor
+from typing import Iterable
 import datetime
 import logging
 import time
@@ -14,8 +17,8 @@ from database import Database
 
 class DatabaseMysql(Database):
     def __init__(self, db_params):
-        self.connection = None
-        self.cursor = None
+        self.connection: MySQLConnection = None
+        self.cursor: MySQLCursor = None
         super().__init__()
         self.db_params = db_params
         self.src_dst_pairs = {}
@@ -42,8 +45,8 @@ class DatabaseMysql(Database):
             t = time.localtime(t)
         return time.strftime('%Y-%m-%d %H:%M:%S', t)
 
-    def execute(self, query, params=None):
-        """ Wrapper for executing queries that recovers from some errors. """
+    def execute(self, query: str, params: Iterable = None) -> None:
+        """ Wrapper for executing queries that recovers from some connection errors. """
         if self.cursor is None:
             try:
                 self._connect_db()
@@ -64,12 +67,12 @@ class DatabaseMysql(Database):
             self._connect_db()
             self.execute(query, params)
 
-    def execute_commit(self, query, params=None):
+    def execute_commit(self, query: str, params: Iterable = None) -> None:
         """ Wrapper for execute + commit. """
         self.execute(query, params)
         self.connection.commit()
 
-    def execute_fetchall_commit(self, query, params=None):
+    def execute_fetchall_commit(self, query: str, params: Iterable = None) -> Iterable:
         """ Wrapper for execute, fetchall and commit.
 
             Sometimes database returns cached result if you don't commit.
