@@ -295,59 +295,20 @@ def _ping(hosts, output):
     p.run()
 
 
-@asyncio.coroutine
-def transmit_loop(config_parser):
-    """ async loop for transmitting pings data to collector """
-    id = random.randint(0, 2**40)
-    while keep_going:
-        url = config_parser['probe']['ws_url']
-        logging.info("Connecting to websocket: %s", url)
-        try:
-            websocket = yield from websockets.connect(url)
-        except OSError as e:
-            logging.error("Error connecting to websocket: %s", str(e))
-            yield from asyncio.sleep(1)
-            continue
-        try:
-            while keep_going:
-                logging.debug("Waiting for data to transmit")
-                try:
-                    data = results_queue.get(timeout=0.5)
-                    logging.debug("Read data from output queue")
-                except queue.Empty:
-                    continue
-                data['id'] = id
-                id += 1
-                yield from websocket.send(json.dumps(data))
-                response_string = yield from websocket.recv()
-                response = json.loads(response_string)
-                if 'id' in response and response['id'] == id-1:
-                    continue
-                # if we get here, we did not get confirmation that the
-                # message was enqueued. Add the poll data back in to the
-                # transmit queue for re-transmission.
-                logging.info("Re-enqueueing data that did not transmit "
-                             "successfully.")
-                results_queue.put(data)
-        except Exception as e:
-            logging.error("Exception in transmit loop: %s", str(e))
-            results_queue.put(data)
-            logging.info("Re-enqueueing data after transmit error.")
-
-
-async def maintain_collector_connection(config_parser: configparser.ConfigParser,
+async def maintain_collector_connection(config: configparser.SectionProxy,
                                         results_queue: TQueue,
                                         unconfirmed_list: list):
     """ Coroutine to connect to collector and re-connect if connection fails.
 
     Starts the other coroutines and restarts them if they stop.
 
+    :param config: SectionProxy configuration section from config file
     :param results_queue: thread-safe queue of messages to transmit
     :param unconfirmed_list: a list of unconfirmed transmitted messages
     :return: None
     """
     global keep_going
-    url = config_parser['probe']['ws_url']
+    url = config['ws_url']
     transmit_task = None
     receive_task = None
     requeue_task = None
@@ -356,6 +317,8 @@ async def maintain_collector_connection(config_parser: configparser.ConfigParser
         try:
             websocket = await websockets.connect(url)
             logging.debug("Connected to websocket %s", url)
+            auth_message = {'type': 'auth', 'name': config['name']}
+            await websocket.send(json.dumps(auth_message))
         except OSError as e:
             logging.error("Error connecting to websocket: %s", str(e))
             await asyncio.sleep(1)
@@ -512,10 +475,11 @@ def main():
                  + '%(message)s'
     config_parser = configparser.ConfigParser(allow_no_value=True)
     config_parser.read(args.config_file)
+    probe_config = config_parser['probe']
     if args.foreground:
         logging.basicConfig(format=log_format, level=args.log_level)
     else:
-        log_filename = config_parser['probe']['log_file']
+        log_filename = probe_config['log_file']
         logging.basicConfig(filename=log_filename, format=log_format,
                             level=args.log_level)
     logging.debug("Read config file: %s", args.config_file)
@@ -529,7 +493,7 @@ def main():
     ping_thread.start()
     logging.info("Starting event loop")
     event_loop = asyncio.get_event_loop()
-    main_task = maintain_collector_connection(config_parser, results_queue, unconfirmed_list)
+    main_task = maintain_collector_connection(probe_config, results_queue, unconfirmed_list)
     try:
         event_loop.run_until_complete(main_task)
     except KeyboardInterrupt:
