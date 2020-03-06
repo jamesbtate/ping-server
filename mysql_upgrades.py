@@ -14,3 +14,12 @@ def version_1():
         'INSERT INTO version VALUES (1);'
     ]
     return queries
+
+
+def version_2():
+    queries = [
+        'DROP TABLE binary_src_dst;',
+        'DROP TABLE output;',
+        'UPDATE version SET ping_schema=2;'
+    ]
+    return queries
