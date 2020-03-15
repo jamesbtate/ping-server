@@ -14,6 +14,8 @@ import time
 import os
 import gc
 
+import misc
+
 from flask import Flask, request, render_template, send_from_directory,\
                   jsonify, send_file
 app = Flask(__name__)
@@ -102,16 +104,8 @@ def garbage_collect():
 
 def parse_args():
     description = "Run development webserver for ping project"
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-c', '--config-file', default='ping.conf',
-                        help="Path to config file. Default is ./ping.conf")
-    parser.add_argument('-d', '--debug', action='store_true',
-                        help="Enable debug-level logging")
+    parser = misc.make_generic_parser(description)
     args = parser.parse_args()
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    if args.debug:
-        logger.setLevel(logging.DEBUG)
     return args
 
 

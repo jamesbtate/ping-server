@@ -14,7 +14,6 @@ class Writer(threading.Thread):
     def __init__(self, db_queue, db_params):
         threading.Thread.__init__(self)
         self.db_queue = db_queue
-        # self.db = DatabaseMysql(db_params)
         self.db = DatabaseInfluxDB(db_params)
         self.keep_going = True
 

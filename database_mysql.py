@@ -21,6 +21,11 @@ class DatabaseMysql(Database):
         self.cursor: MySQLCursor = None
         super().__init__()
         self.db_params = db_params
+        self.user = self.db_params['db_user']
+        self.password = self.db_params['db_pass']
+        self.host = self.db_params['db_host']
+        self.port = self.db_params['db_port']
+        self.database = self.db_params['db_db']
         self.src_dst_pairs = {}
         self._connect_db()
 
@@ -35,6 +40,7 @@ class DatabaseMysql(Database):
                                         )
             self.connection = c
             self.cursor = self.connection.cursor(dictionary=True)
+            logging.debug("Connected to database %s:%s:%s", self.host, self.port, self.database)
         except DatabaseError as e:
             logging.error(str(e))
 
@@ -63,16 +69,20 @@ class DatabaseMysql(Database):
             elif e.errno == 2055:
                 logging.info("Lost connection to MySQL server. Broken Pipe. Reconnecting...")
             else:
-                raise
+                raise e from None
             self._connect_db()
             self.execute(query, params)
+
+    def commit(self):
+        """ Calls commit() on the underlying MySQL connection. """
+        self.connection.commit()
 
     def execute_commit(self, query: str, params: Iterable = None) -> None:
         """ Wrapper for execute + commit. """
         self.execute(query, params)
         self.connection.commit()
 
-    def execute_fetchall_commit(self, query: str, params: Iterable = None) -> Iterable:
+    def execute_fetchall_commit(self, query: str, params: Iterable = None) -> list:
         """ Wrapper for execute, fetchall and commit.
 
             Sometimes database returns cached result if you don't commit.
@@ -81,6 +91,28 @@ class DatabaseMysql(Database):
         rows = self.cursor.fetchall()
         self.connection.commit()
         return rows
+
+    def get_tables(self):
+        """ Return a list of the names of the tables in the database """
+        rows = self.execute_fetchall_commit("SHOW TABLES")
+        table_names = [tuple(_.values())[0] for _ in rows]
+        logging.debug("Tables: %s", table_names)
+        return table_names
+
+    def get_db_version(self) -> int:
+        """ Get the version integer of the schema in the database
+
+        If the version table is not defined, version 0 is assumed.
+        If the version table and the src_dst table is not defined, version -1 is assumed.
+
+        """
+        table_names = self.get_tables()
+        if 'src_dst' not in table_names:
+            return -1
+        elif 'version' not in table_names:
+            return 0
+        version = self.execute_fetchall_commit("SELECT * FROM version")[0]['ping_schema']
+        return version
 
     def get_src_dst_pairs(self):
         query = "SELECT id,INET_NTOA(src) AS src,INET_NTOA(dst) AS dst " + \

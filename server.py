@@ -14,7 +14,12 @@ import asyncio
 import logging
 import queue
 import json
-import os
+import sys
+
+from database_mysql import DatabaseMysql
+import mysql_upgrades
+import misc
+
 
 
 write_queue: Queue = None  # queue of messages that need to be recorded.
@@ -103,21 +108,29 @@ async def handle_client(websocket: websockets.server.WebSocketServerProtocol, re
 
 def parse_args() -> argparse.Namespace:
     description = "Record ping results to some database."
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-c', '--config-file', default='ping.conf',
-                        help="Path to config file. Default is ./ping.conf")
-    parser.add_argument('-f', '--foreground', action='store_true',
-                        help="Run in foreground and log to stderr.")
-    parser.add_argument('-d', '--debug', dest='log_level',
-                        default=logging.INFO, action='store_const',
-                        const=logging.DEBUG,
-                        help="Enable debug-level logging.")
+    parser = misc.make_generic_parser(description)
     args = parser.parse_args()
     return args
 
 
-def startup_checks(args):
+def startup_checks(args, db: DatabaseMysql):
     """ Checks the server should do before it is ready to go. """
+    logging.debug("Checking database version...")
+    db_version = db.get_db_version()
+    logging.debug("Database schema version: %s", db_version)
+    code_version = mysql_upgrades.get_code_version()
+    logging.debug("Code schema version: %s", code_version)
+    if db_version == code_version:
+        logging.debug("Database schema version matches code version.")
+    elif db_version > code_version:
+        logging.fatal("Database schema is a later version than our code. Exiting...")
+        sys.exit(1)
+    elif db_version == -1:
+        logging.fatal("Database schema not installed. Exiting...")
+        sys.exit(2)
+    else:
+        logging.warning("Database schema version is earlier than code version. Attempting upgrade...")
+        mysql_upgrades.upgrade_database(db)
     pass
 
 
@@ -137,13 +150,15 @@ def main():
         logging.basicConfig(filename=log_filename, format=log_format,
                             level=args.log_level)
     logging.debug("Read config file: %s", args.config_file)
-    startup_checks(args)
+    server_config = config_parser['server']
+    db = DatabaseMysql(server_config)
+    startup_checks(args, db)
     write_queue = queue.Queue()
     listen_ip = config_parser['server']['ws_address']
     listen_port = int(config_parser['server']['ws_port'])
     server = websockets.serve(handle_client, listen_ip, listen_port)
     logging.info("Started listening on %s:%s", listen_ip, str(listen_port))
-    writer = Writer(write_queue, config_parser['server'])
+    writer = Writer(write_queue, server_config)
     writer.start()
     asyncio.get_event_loop().run_until_complete(server)
     try:

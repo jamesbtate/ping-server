@@ -2,6 +2,8 @@
 Misc functions
 """
 
+import argparse
+import logging
 import time
 import re
 
@@ -80,3 +82,17 @@ def get_time_extents(args, default=3601):
         elif not stop_time:
             stop_time = start_time + default
     return start_time, stop_time
+
+
+def make_generic_parser(description):
+    """ Make and return an argparse ArgumentParser with common options """
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('-c', '--config-file', default='ping.conf',
+                        help="Path to config file. Default is ./ping.conf")
+    parser.add_argument('-f', '--foreground', action='store_true',
+                        help="Run in foreground and log to stderr.")
+    parser.add_argument('-d', '--debug', dest='log_level',
+                        default=logging.INFO, action='store_const',
+                        const=logging.DEBUG,
+                        help="Enable debug-level logging.")
+    return parser

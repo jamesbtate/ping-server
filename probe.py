@@ -29,6 +29,8 @@ import time
 import sys
 import os
 
+import misc
+
 # ICMP parameters
 ICMP_ECHOREPLY = 0  # Echo reply (per RFC792)
 ICMP_ECHO = 8  # Echo request (per RFC792)
@@ -48,14 +50,14 @@ class Pinger(object):
     """
 
     def __init__(self, destinations, timeout=500, packet_size=55,
-                 output=sys.stdout, own_id=None, sourceaddress=False):
+                 output=sys.stdout, own_id=None, source_address=False):
         logging.debug("Initialized Pinger. timeout: %i", timeout)
         self.destinations = [socket.gethostbyname(_) for _ in destinations]
         self.output = output
         self.timeout = timeout
         self.packet_size = packet_size
-        if sourceaddress is not False:
-            self.sourceaddress = socket.gethostbyname(sourceaddress)
+        if source_address is not False:
+            self.source_address = socket.gethostbyname(source_address)
         if own_id is None:
             self.own_id = os.getpid() & 0xFFFF  # just the 2 low-order bytes
         else:
@@ -440,15 +442,7 @@ def setup_signal_handler():
 
 def parse_args():
     description = "Ping stuff and send the responses to a recording server."
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-c', '--config-file', default='ping.conf',
-                        help="Path to config file. Default is ./ping.conf")
-    parser.add_argument('-f', '--foreground', action='store_true',
-                        help="Run in foreground and log to stderr.")
-    parser.add_argument('-d', '--debug', dest='log_level',
-                        default=logging.INFO, action='store_const',
-                        const=logging.DEBUG,
-                        help="Enable debug-level logging.")
+    parser = misc.make_generic_parser(description)
     args = parser.parse_args()
     return args
 
