@@ -2,6 +2,8 @@
 
 A distributed application for running constant pings against hosts and logging the results. Used for network and system monitoring. Probes can be run on multiple systems with results stored on the master for testing from multiple locations.
 
+# Production Setup
+
 ## Simplified Setup
 1. `./docker_build.bash`
 1. `./docker_create.bash`
@@ -39,16 +41,32 @@ A distributed application for running constant pings against hosts and logging t
   1. `./docker_build.bash`
 
 
-## Old Usage
+# Development Environment Setup
+
+## Pre-requisites:
+
+- Only tested on Linux
+- Python3.6+
+- RHEL-compatible package names:
+  - python3
+  - mariadb-devel
+  - gcc
+  - docker *or* podman
+  - probably a bunch more things
+- Make a virtuenenv:
+  - `./make_venv.bash`
+    - This script makes the venv, activates it, and installs the requirements.
+
+## Some old development environment execution instructions
 1. Create a database and user for the ping recorder.
     ```
     create database ping;
-    create user ping@localhost identified by 'abcd1234';
+    create user ping@localhost identified by 'ping';
     grant all on ping.* to ping@localhost;
     flush privileges;
     ```
 2. Import the database schema (only on the server).
-  1. mysql *database* < schema.sql
+  1. mysql *database_name* < schema.sql
 1. Copy `default.conf` to `ping.conf` and modify as needed.
   1. Fill in the database details in the `server` section.
 2. Run the server process with ./server.py
