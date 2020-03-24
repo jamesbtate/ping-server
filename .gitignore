@@ -12,3 +12,4 @@ data/
 data.*
 *.sqlite
 *.sqlite3
+config.py
