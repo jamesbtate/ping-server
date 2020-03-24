@@ -25,7 +25,7 @@ CMD ["python", "probe.py", "-f"]
 
 
 FROM base as collector
-CMD ["python", "server.py", "-f"]
+CMD ["start_collector.bash"]
 
 
 
