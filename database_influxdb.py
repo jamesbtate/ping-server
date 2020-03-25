@@ -61,7 +61,7 @@ class DatabaseInfluxDB(Database):
     def get_poll_counts_by_pair(self, prober_name, dst_ip) -> int:
         """ Return the number of polls for a specific pair. """
         query = 'SELECT COUNT(latency) FROM "icmp-echo" WHERE ' + \
-                'prober_name=prober_name AND dst_ip=$dst_ip'
+                'prober_name=$prober_name AND dst_ip=$dst_ip'
         params = {
             'prober_name': prober_name,
             'dst_ip': dst_ip,
@@ -174,7 +174,7 @@ class DatabaseInfluxDB(Database):
         Returns a datetime.datetime object.
         """
         query = 'SELECT LAST(*) FROM "icmp-echo" WHERE ' + \
-                'prober_name=prober_name AND dst_ip=$dst_ip'
+                'prober_name=$prober_name AND dst_ip=$dst_ip'
         params = {
             'prober_name': prober_name,
             'dst_ip': dst_ip,
