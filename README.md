@@ -10,35 +10,39 @@ A distributed application for running constant pings against hosts and logging t
 1. `./docker_start.bash`
 
 ## Simplified Cleanup
-1. `./docker_rm.bash`
-1. `./docker_image_rm.bash`
+1. `./docker_rm.bash`   # This kills the containers if they are running.
+1. `./docker_image_rm.bash`   # This deletes the images.
 
 ## Setup Details
+0. `./initial_setup.bash` or do the next few steps manually.
 1. Make some directories:
-  1. `mkdir /opt/ping`
-  2. `mkdir /opt/ping/influxdb`
-  2. `mkdir /opt/ping/mariadb`
+   1. `mkdir /opt/ping`
+   2. `mkdir /opt/ping/influxdb`
+   2. `mkdir /opt/ping/mariadb`
 2. Create docker network
-  1. `docker network create ping`
+   1. `docker network create ping`
 3. Create ping user
-  1. `useradd -d /opt/ping ping`
+   1. `useradd -d /opt/ping ping`
 4. Directory permissions
-  1. `chown -R ping:ping /opt/ping`
+   1. `chown -R ping:ping /opt/ping`
 5. Setup user/group mapping. Skipping this for now and just running as root.
-  1. Modify /etc/subuid and /etc/subgid
-  2. Modify /etc/docker/daemon.json to remap the users. This has implications for other containers on the system.
-6. Create influxdb container
-  1. `docker create --name ping_influxdb -h influxdb --network ping -p 8086:8086 -v /opt/ping/influxdb/:/var/lib/influxdb influxdb`
-7. Start influxdb container
-  1. `docker start ping_influxdb`
-1. Create MariaDB container
-  1. `MYSQL_ROOT_PASSWORD=password`
-  1. `docker create --name ping_mariadb -h mariadb --network ping -p 13306:3306 -v /opt/ping/mariadb/:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD mariadb:10.3`
-1. Start MariaDB container
-  1. `docker start ping_mariadb`
-  2. Now you can connect to MariaDB from the host with `mysql -h 127.0.0.1 -P 13306 -p$MYSQL_ROOT_PASSWORD`
-8. Build application docker images. This will take a while the first time (mostly C and C++ compilation of numpy and matplotlib)
-  1. `./docker_build.bash`
+   1. Modify /etc/subuid and /etc/subgid
+   2. Modify /etc/docker/daemon.json to remap the users. This has implications for other containers on the system.
+0. Create config files.
+   1. Copy `default.conf` to `ping.conf`
+   1. Copy `config.default.py` to `config.py`
+   2. Modify values as necessary. If you change database stuff, you need to modify `docker_build.bash` too.
+0. Add prober to database
+   1. `mysql -h 127.0.0.1 -P 13306 -u ping -pping ping`
+   1. ```INSERT INTO prober (`name`,`key`,`added`) VALUES ('prober1', 'prober1', NOW());```
+8. Build docker images. This will take a minute or two. A couple things need to compile.
+   1. `./docker_build.bash`
+6. Create containers
+   1. `./docker_create_new.bash`
+7. Start containers
+   1. `./docker_start.bash`
+
+
 
 
 # Development Environment Setup
@@ -72,6 +76,8 @@ A distributed application for running constant pings against hosts and logging t
 2. Run the server process with ./server.py
 3. Run the ping process with ./probe.py
   1. Remember that you must generally be root to use raw ICMP sockets.
+
+ You can connect to the MySQL service from the host with `mysql -h 127.0.0.1 -P 13306 -pping`.
 
 ## Sources
 

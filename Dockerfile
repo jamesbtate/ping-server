@@ -1,6 +1,6 @@
 FROM python:3.7-slim as builder
 
-RUN BUILD_DEPS='gcc libc-dev' \
+RUN BUILD_DEPS='gcc libc-dev libmariadb-dev-compat' \
     && apt update \
     && apt install -y --no-install-recommends $BUILD_DEPS
 
@@ -12,6 +12,11 @@ COPY . /app
 
 
 FROM python:3.7-slim as base
+
+RUN RUN_DEPS='libmariadb3' \
+    && apt update \
+    && apt install -y --no-install-recommends $RUN_DEPS
+
 WORKDIR /app
 COPY --from=builder /app /app
 
@@ -25,7 +30,7 @@ CMD ["python", "probe.py", "-f"]
 
 
 FROM base as collector
-CMD ["start_collector.bash"]
+CMD ["bash", "start_collector.bash"]
 
 
 
