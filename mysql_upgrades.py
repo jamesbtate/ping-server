@@ -83,3 +83,14 @@ def version_3():
         'UPDATE version SET ping_schema=3;'
     ]
     return queries
+
+
+def version_4():
+    """ Replace src_dst.src with prober_id reference """
+    queries = [
+        'ALTER TABLE src_dst DROP COLUMN src;',
+        'ALTER TABLE src_dst ADD COLUMN prober_id BIGINT NOT NULL AFTER id;',
+        'ALTER TABLE src_dst ADD FOREIGN KEY (prober_id) REFERENCES prober (id);',
+        'UPDATE version SET ping_schema=4;'
+    ]
+    return queries

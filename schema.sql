@@ -13,7 +13,7 @@
 CREATE TABLE `prober` (
   `id` bigint(20) NOT NULL,
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
   `key` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
   `added` datetime NOT NULL,
   PRIMARY KEY (`id`)
@@ -25,7 +25,7 @@ CREATE TABLE `prober_target` (
   `id` bigint(20) NOT NULL,
   `prober_id` bigint(20) NOT NULL,
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
   `ip` int(10) unsigned NOT NULL,
   `type` enum('icmp','udp','tcp') COLLATE utf8mb4_unicode_ci NOT NULL,
   `port` int(10) unsigned DEFAULT NULL,
@@ -39,9 +39,11 @@ CREATE TABLE `prober_target` (
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `src_dst` (
   `id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
-  `src` int(10) unsigned NOT NULL,
+  `prober_id` bigint(20) NOT NULL,
   `dst` int(10) unsigned NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `prober_id` (`prober_id`),
+  CONSTRAINT `src_dst_ibfk_1` FOREIGN KEY (`prober_id`) REFERENCES `prober` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -60,4 +62,4 @@ CREATE TABLE `version` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 DELETE FROM version;
-INSERT INTO `version` VALUES (3);
+INSERT INTO `version` VALUES (4);
