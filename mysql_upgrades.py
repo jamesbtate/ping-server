@@ -94,3 +94,15 @@ def version_4():
         'UPDATE version SET ping_schema=4;'
     ]
     return queries
+
+
+def version_5():
+    """ Make primary keys of prober and prober_target AUTO_INCREMENT """
+    queries = [
+        'ALTER TABLE prober_target MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT;',
+        'SET FOREIGN_KEY_CHECKS=0;',
+        'ALTER TABLE prober MODIFY COLUMN id BIGINT NOT NULL AUTO_INCREMENT;',
+        'SET FOREIGN_KEY_CHECKS=1;',
+        'UPDATE version SET ping_schema=5;'
+    ]
+    return queries
