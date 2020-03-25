@@ -102,6 +102,11 @@ def garbage_collect():
     return "Garbage collected"
 
 
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+
 def parse_args():
     description = "Run development webserver for ping project"
     parser = misc.make_generic_parser(description)
