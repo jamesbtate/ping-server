@@ -36,9 +36,10 @@ A distributed application for running constant pings against hosts and logging t
    1. `mysql -h 127.0.0.1 -P 13306 -u ping -pping ping`
    1. ```INSERT INTO prober (`name`,`key`,`added`) VALUES ('prober1', 'prober1', NOW());```
 8. Build docker images. This will take a minute or two. A couple things need to compile.
-   1. `./docker_build.bash`
+   1. `./docker_build_new.bash`   # This requires docker 17.05+
+   (does not work on RHEL7-based distributions. Use podman instead.)
 6. Create containers
-   1. `./docker_create_new.bash`
+   1. `./docker_create.bash`
 7. Start containers
    1. `./docker_start.bash`
 
