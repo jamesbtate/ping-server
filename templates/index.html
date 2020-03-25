@@ -6,7 +6,7 @@
 <table>
     <tr>
         <th>ID</th>
-        <th>Source IP</th>
+        <th>Prober</th>
         <th>Destination IP</th>
         <th>Polls</th>
         <th>Last Poll Time</th>
@@ -14,7 +14,7 @@
     {% for pair in src_dst_pairs %}
         <tr>
             <td><a href="/graph/{{ pair.id }}">{{ pair.id }}</a></td>
-            <td>{{ pair.src }}</td>
+            <td>{{ pair.prober_name }}</td>
             <td>{{ pair.dst }}</td>
             <td>{{ pair.polls }}</td>
             <td>{{ pair.mtime }}</td>
