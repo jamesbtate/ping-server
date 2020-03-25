@@ -52,7 +52,7 @@ def ping_figure(success_times, success_values, timeout_times,
 
 def make_graph_figure(pair, records):
     """ Make a graph for the given pair and list of records"""
-    title = str.format("Ping Results {} to {}", pair['src'], pair['dst'])
+    title = str.format("Ping Results {} to {}", pair['prober_name'], pair['dst'])
     success_times = []
     success_values = []
     timeout_times = []

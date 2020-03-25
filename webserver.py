@@ -41,11 +41,11 @@ def favicon():
 def index():
     pairs = db.get_src_dst_pairs()
     for pair in pairs:
-        src = pair['src']
+        prober_name = pair['prober_name']
         dst = pair['dst']
-        dt = db.last_poll_time_by_pair(src, dst)
+        dt = db.last_poll_time_by_pair(prober_name, dst)
         pair['mtime'] = dt.isoformat()
-        pair['polls'] = db.get_poll_counts_by_pair(src, dst)
+        pair['polls'] = db.get_poll_counts_by_pair(prober_name, dst)
     data = {
         'src_dst_pairs': pairs
     }
@@ -63,7 +63,7 @@ def graph_page(pair_id):
     retrieve_time = time.time() - t
     data = {
         'pair_id': pair_id,
-        'src': pair['src'],
+        'prober_name': pair['prober_name'],
         'dst': pair['dst'],
         'start_time': start_time,
         'stop_time': stop_time,

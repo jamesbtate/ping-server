@@ -49,21 +49,21 @@ class DatabaseInfluxDB(Database):
         """ Gets a source-destination pair from the database by ID number. """
         return self.databaseMysql.get_src_dst_by_id(pair_id)
 
-    def src_dst_id(self, src, dst):
+    def src_dst_id(self, prober_name, dst):
         """ Gets the ID of the src-dst pair from the DB, maybe creating the entry.
 
         Create a new src-dst pair in the DB if it does not already exist.
         Maintains a cache of src-dst pairs in memory.
 
         Returns the ID of src-dst pair. """
-        return self.databaseMysql.src_dst_id(src, dst)
+        return self.databaseMysql.src_dst_id(prober_name, dst)
 
-    def get_poll_counts_by_pair(self, src_ip, dst_ip) -> int:
+    def get_poll_counts_by_pair(self, prober_name, dst_ip) -> int:
         """ Return the number of polls for a specific pair. """
         query = 'SELECT COUNT(latency) FROM "icmp-echo" WHERE ' + \
-                'src_ip=$src_ip AND dst_ip=$dst_ip'
+                'prober_name=prober_name AND dst_ip=$dst_ip'
         params = {
-            'src_ip': src_ip,
+            'prober_name': prober_name,
             'dst_ip': dst_ip,
         }
         logging.debug("Querying: %s | %s", query, params)
@@ -90,9 +90,9 @@ class DatabaseInfluxDB(Database):
         if start is None:
             start = end - 3601
         src_dst = self.get_src_dst_by_id(pair_id)
-        src_ip = src_dst['src']
+        prober_name = src_dst['prober_name']
         dst_ip = src_dst['dst']
-        records = self.read_records(src_ip, dst_ip, start, end)
+        records = self.read_records(prober_name, dst_ip, start, end)
         if convert_to_datetime:
             for record in records:
                 # record['time'] = datetime.datetime.strptime(record['time'], "%Y-%m-%dT%H:%M:%SZ")
@@ -146,10 +146,10 @@ class DatabaseInfluxDB(Database):
         }
         return statistics
 
-    def record_poll_data(self, src_ip, dst_ip, send_time, receive_time):
+    def record_poll_data(self, prober_name, dst_ip, send_time, receive_time):
         """ Record results of a single poll in the database. """
         # do this to make sure there is a record created in the MySQL DB for this pair.
-        pair_id = self.src_dst_id(src_ip, dst_ip)
+        pair_id = self.src_dst_id(prober_name, dst_ip)
         if receive_time is None:
             latency = TIMEOUT_VALUE
         else:
@@ -158,7 +158,7 @@ class DatabaseInfluxDB(Database):
             "measurement": "icmp-echo",
             "tags": {
                 "probe": "[unimplemented]",
-                "src_ip": src_ip,
+                "prober_name": prober_name,
                 "dst_ip": dst_ip
             },
             "time": int(send_time),
@@ -168,15 +168,15 @@ class DatabaseInfluxDB(Database):
         }
         self.client.write_points([point], time_precision='s')
 
-    def last_poll_time_by_pair(self, src_ip, dst_ip) -> datetime.datetime:
+    def last_poll_time_by_pair(self, prober_name, dst_ip) -> datetime.datetime:
         """ Get the last time a particular pair ID was polled.
 
         Returns a datetime.datetime object.
         """
         query = 'SELECT LAST(*) FROM "icmp-echo" WHERE ' + \
-                'src_ip=$src_ip AND dst_ip=$dst_ip'
+                'prober_name=prober_name AND dst_ip=$dst_ip'
         params = {
-            'src_ip': src_ip,
+            'prober_name': prober_name,
             'dst_ip': dst_ip,
         }
         logging.debug("Querying: %s | %s", query, params)
@@ -185,7 +185,7 @@ class DatabaseInfluxDB(Database):
         dt = datetime.datetime.fromtimestamp(points[0]['time'])
         return dt
 
-    def read_records(self, src_ip, dst_ip, start_time, end_time):
+    def read_records(self, prober_name, dst_ip, start_time, end_time):
         """ Return the list of records from start to end times, inclusive.
 
             start_time and end_time are UNIX epoch seconds.
@@ -196,10 +196,10 @@ class DatabaseInfluxDB(Database):
         """
         start_time = str(int(start_time))
         end_time = str(int(end_time))
-        query = 'SELECT "latency" FROM "icmp-echo" WHERE src_ip=$src_ip AND ' + \
+        query = 'SELECT "latency" FROM "icmp-echo" WHERE prober_name=$prober_name AND ' + \
                 'dst_ip=$dst_ip AND time>=' + start_time + 's AND time<=' + end_time + 's'
         params = {
-            'src_ip': src_ip,
+            'prober_name': prober_name,
             'dst_ip': dst_ip,
         }
         logging.debug("Querying: %s | %s", query, params)
