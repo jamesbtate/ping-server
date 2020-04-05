@@ -4,7 +4,10 @@ Database abstraction layer
 """
 
 import mysql.connector
+from mysql.connector import MySQLConnection
 from mysql.connector.errors import DatabaseError, OperationalError
+from mysql.connector.cursor import MySQLCursor
+from typing import Iterable
 import datetime
 import logging
 import time
@@ -12,12 +15,17 @@ import time
 from database import Database
 
 
-class DatabaseMysql(Database):
+class DatabaseMysql(object):
     def __init__(self, db_params):
-        self.connection = None
-        self.cursor = None
+        self.connection: MySQLConnection = None
+        self.cursor: MySQLCursor = None
         super().__init__()
         self.db_params = db_params
+        self.user = self.db_params['db_user']
+        self.password = self.db_params['db_pass']
+        self.host = self.db_params['db_host']
+        self.port = self.db_params['db_port']
+        self.database = self.db_params['db_db']
         self.src_dst_pairs = {}
         self._connect_db()
 
@@ -32,6 +40,7 @@ class DatabaseMysql(Database):
                                         )
             self.connection = c
             self.cursor = self.connection.cursor(dictionary=True)
+            logging.debug("Connected to database %s:%s:%s", self.host, self.port, self.database)
         except DatabaseError as e:
             logging.error(str(e))
 
@@ -42,8 +51,8 @@ class DatabaseMysql(Database):
             t = time.localtime(t)
         return time.strftime('%Y-%m-%d %H:%M:%S', t)
 
-    def execute(self, query, params=None):
-        """ Wrapper for executing queries that recovers from some errors. """
+    def execute(self, query: str, params: Iterable = None) -> None:
+        """ Wrapper for executing queries that recovers from some connection errors. """
         if self.cursor is None:
             try:
                 self._connect_db()
@@ -60,16 +69,20 @@ class DatabaseMysql(Database):
             elif e.errno == 2055:
                 logging.info("Lost connection to MySQL server. Broken Pipe. Reconnecting...")
             else:
-                raise
+                raise e from None
             self._connect_db()
             self.execute(query, params)
 
-    def execute_commit(self, query, params=None):
+    def commit(self):
+        """ Calls commit() on the underlying MySQL connection. """
+        self.connection.commit()
+
+    def execute_commit(self, query: str, params: Iterable = None) -> None:
         """ Wrapper for execute + commit. """
         self.execute(query, params)
         self.connection.commit()
 
-    def execute_fetchall_commit(self, query, params=None):
+    def execute_fetchall_commit(self, query: str, params: Iterable = None) -> list:
         """ Wrapper for execute, fetchall and commit.
 
             Sometimes database returns cached result if you don't commit.
@@ -79,123 +92,74 @@ class DatabaseMysql(Database):
         self.connection.commit()
         return rows
 
+    def get_tables(self):
+        """ Return a list of the names of the tables in the database """
+        rows = self.execute_fetchall_commit("SHOW TABLES")
+        table_names = [tuple(_.values())[0] for _ in rows]
+        logging.debug("Tables: %s", table_names)
+        return table_names
+
+    def get_db_version(self) -> int:
+        """ Get the version integer of the schema in the database
+
+        If the version table is not defined, version 0 is assumed.
+        If the version table and the src_dst table is not defined, version -1 is assumed.
+
+        """
+        table_names = self.get_tables()
+        if 'src_dst' not in table_names:
+            return -1
+        elif 'version' not in table_names:
+            return 0
+        version = self.execute_fetchall_commit("SELECT * FROM version")[0]['ping_schema']
+        return version
+
+    def get_prober_id_by_name(self, name: str) -> int:
+        """ Gets a prober ID from the database by name string. """
+        query = "SELECT id FROM prober WHERE name=%s"
+        rows = self.execute_fetchall_commit(query, (name,))
+        if not rows:
+            raise ValueError("No prober with name: " + str(name))
+        return rows[0]['id']
+
     def get_src_dst_pairs(self):
-        query = "SELECT id,INET_NTOA(src) AS src,INET_NTOA(dst) AS dst " + \
-                "FROM src_dst"
+        query = "SELECT src_dst.id,prober.name as prober_name,INET_NTOA(dst) AS dst " + \
+                "FROM src_dst JOIN prober on src_dst.prober_id=prober.id"
         rows = self.execute_fetchall_commit(query)
         return rows
 
     def get_src_dst_by_id(self, id):
         """ Gets a source-destination pair from the database by ID number. """
-        query = "SELECT id,INET_NTOA(src) AS src,INET_NTOA(dst) AS dst " + \
-                "FROM src_dst WHERE id=%s"
+        query = "SELECT src_dst.id,prober.name as prober_name,prober_id,INET_NTOA(dst) AS dst \
+                 FROM src_dst JOIN prober ON src_dst.prober_id=prober.id WHERE src_dst.id=%s"
         rows = self.execute_fetchall_commit(query, (id,))
         if not rows:
             raise ValueError("No source-destination pair with ID# " + str(id))
         return rows[0]
 
-    def src_dst_id(self, src, dst):
+    def src_dst_id(self, prober_name, dst):
         """ Gets the ID of the src-dst pair from the DB, maybe creating the entry.
 
         Create a new src-dst pair in the DB if it does not already exist.
         Maintains a cache of src-dst pairs in memory.
 
         Returns the ID of src-dst pair. """
-        params = (src, dst)
-        if params in self.src_dst_pairs:
-            return self.src_dst_pairs[params]
-        query = "SELECT id FROM src_dst WHERE src=INET_ATON(%s) \
-                 AND dst=INET_ATON(%s)"
-        rows = self.execute_fetchall_commit(query, params)
+        select_params = (dst, prober_name)
+        if select_params in self.src_dst_pairs:
+            return self.src_dst_pairs[select_params]
+        query = "SELECT src_dst.id AS id FROM src_dst JOIN prober ON src_dst.prober_id=prober.id \
+                WHERE dst=INET_ATON(%s) AND prober.name=%s"
+        rows = self.execute_fetchall_commit(query, select_params)
         if not rows:
             # we need to create the src-dst pair
-            query = "INSERT INTO src_dst (src,dst) VALUES \
-                     (INET_ATON(%s),INET_ATON(%s))"
-            self.execute_commit(query, params)
+            prober_id = self.get_prober_id_by_name(prober_name)
+            insert_params = (prober_id, dst)
+            query = "INSERT INTO src_dst (prober_id,dst) VALUES (%s, INET_ATON(%s));"
+            self.execute_commit(query, insert_params)
             pair_id = self.cursor.lastrowid
             logging.debug("Added pair ID %i to src_dst table", pair_id)
         else:
             result = rows[0]
             pair_id = result['id']
-        self.src_dst_pairs[params] = pair_id
-        return pair_id
-
-    def get_poll_counts_by_pair(self):
-        query = "SELECT src_dst,count(*) AS count FROM output GROUP BY src_dst"
-        rows = self.execute_fetchall_commit(query)
-        return rows
-
-    def get_poll_data_by_id(self, pair_id, start=None, stop=None):
-        """ Get poll data from DB for specific src_dst pair.
-
-            Optionally specify the time window with epoch numbers
-            or time structs.
-
-            Returns a list of rows from the database.
-            Each row is a mapping with keys 'time' and 'latency'.
-            The time is Python time object.
-            The latency is the number of seconds latency (float).
-            A latency value of None indicates a timeout.
-        """
-        if stop is None:
-            stop = time.time()
-        if start is None:
-            start = stop - 3601
-        query = "SELECT time,latency FROM output WHERE src_dst=%s AND time > %s AND time < %s"
-        if not type(pair_id) is int:
-            raise TypeError("pair_id must be an integer.")
-        params = (pair_id,
-                  DatabaseMysql.time_to_mysql(start),
-                  DatabaseMysql.time_to_mysql(stop))
-        rows = self.execute_fetchall_commit(query, params)
-        for row in rows:
-            row['latency'] = Database.short_latency_to_seconds(row['latency'])
-        return rows
-
-    def record_poll_data(self, src_ip, dst_ip, send_time, receive_time):
-        """ Record results of a single poll in the database. """
-        latency = Database.time_diff_to_short_latency(send_time, receive_time)
-        pair_id = self.src_dst_id(src_ip, dst_ip)
-        send_datetime = datetime.datetime.fromtimestamp(send_time)
-        query = "INSERT INTO output (time, src_dst, latency) \
-                             VALUES (%s, %s, %s)"
-        params = (send_datetime, pair_id, latency)
-        self.execute_commit(query, params)
-
-    def get_binary_src_dst_pairs(self):
-        query = "SELECT id, INET_NTOA(src) AS src, INET_NTOA(dst) AS dst, " + \
-                "binary_file, max_records FROM binary_src_dst"
-        rows = self.execute_fetchall_commit(query)
-        return rows
-
-    def get_binary_src_dst_by_id(self, id):
-        """ Gets a binary src-dst pair from the database by ID number. """
-        query = "SELECT id, INET_NTOA(src) AS src, INET_NTOA(dst) AS dst, " + \
-                "binary_file, max_records FROM binary_src_dst WHERE id=%s"
-        rows = self.execute_fetchall_commit(query, (id,))
-        if not rows:
-            raise ValueError("No binary src-dst pair with ID# " + str(id))
-        return rows[0]
-
-    def get_binary_src_dst_by_pair(self, src_ip, dst_ip):
-        params = (src_ip, dst_ip)
-        query = "SELECT * FROM binary_src_dst WHERE src=INET_ATON(%s) \
-                 AND dst=INET_ATON(%s)"
-        rows = self.execute_fetchall_commit(query, params)
-        if not rows:
-            return rows
-        return rows[0]
-
-    def make_binary_src_dst_pair(self, src, dst, binary_file, max_records):
-        """ Make an entry in the database for a src-dst pair with data file.
-
-        Args:
-        binary_file: path to data file
-        """
-        query = "INSERT INTO binary_src_dst (src,dst,binary_file,max_records) \
-                 VALUES (INET_ATON(%s), INET_ATON(%s), %s, %s)"
-        params = (src, dst, binary_file, max_records)
-        self.execute_commit(query, params)
-        pair_id = self.cursor.lastrowid
-        logging.info("Created new binary pair: %i %s to %s", pair_id, src, dst)
+        self.src_dst_pairs[select_params] = pair_id
         return pair_id

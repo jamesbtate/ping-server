@@ -3,6 +3,10 @@
 Listens for connections from transmitters and saves ping output in DB.
 """
 from writer import Writer
+
+from websockets.server import WebSocketServerProtocol as Websocket
+from typing import Optional
+from queue import Queue
 import configparser
 import websockets
 import argparse
@@ -10,73 +14,128 @@ import asyncio
 import logging
 import queue
 import json
-import os
+import sys
+
+from database_mysql import DatabaseMysql
+import mysql_upgrades
+import misc
 
 
-db_queue = None
+
+write_queue: Queue = None  # queue of messages that need to be recorded.
+clients: dict = {}  # all connected clients, keyed on client name.
 
 
-def read_config(filename):
+def read_config(filename: str) -> configparser.ConfigParser:
     parser = configparser.ConfigParser(allow_no_value=True)
     parser.read(filename)
     return parser
 
 
-def handle_message_string(remote_addr, message_string):
-    message = json.loads(message_string)
-    logging.debug("message from %s: %s", remote_addr[0], message)
-    if 'type' not in message:
-        logging.warning("Message from %s has no type. Discarding.", remote_addr)
-    elif 'id' not in message:
-        logging.warning("Message from %s has no id. Discarding.", remote_addr)
-    elif message['type'] == 'output':
-        message['remote_ip'] = remote_addr[0]
-        db_queue.put(message)
-        logging.debug("Enqueued message from %s. ID: %i", remote_addr, message['id'])
-        return message['id']
+def handle_output_message(remote_addr: tuple, client_name: str, message: dict):
+    global write_queue
+    if 'id' not in message:
+        logging.warning("Output message from %s has no id. Discarding.", remote_addr)
+    message['remote_ip'] = remote_addr[0]
+    message['prober_name'] = client_name
+    write_queue.put(message)
+    logging.debug("Enqueued message from %s. ID: %i", remote_addr, message['id'])
+    return message['id']
+
+
+def handle_auth_message(remote_addr: tuple, message: dict, websocket: Websocket) -> Optional[str]:
+    global clients
+    # right now, we don't actually do any authentication. we just register the client.
+    name = message['name']
+    if not name:
+        logging.error("Blank name in auth message from %s", remote_addr)
+        return None
+    if name not in clients:
+        clients[name] = websocket
+        logging.info("Client from %s authenticated with name %s", remote_addr, name)
     else:
-        logging.warning("Unknown message from %s type: %s", remote_addr,
-                        message['type'])
+        logging.error("Client %s already registered. Duplicate name from %s", name, remote_addr)
+        return None
+    return name
 
 
-@asyncio.coroutine
-def listen(websocket, path):
+def handle_client_disconnect(remote_addr: tuple, client_name: str) -> None:
+    global clients
+    try:
+        clients.pop(client_name)
+    except KeyError:
+        logging.debug("Could not pop client %s named %s from clients list - not in list", remote_addr, client_name)
+
+
+async def handle_client(websocket: websockets.server.WebSocketServerProtocol, request_uri) -> None:
+    """ Coroutine handler for websocket connections from probers.
+
+     :param websocket: The websocket connection from a newly connected client.
+     :param request_uri: The path requested in the websocket HTTP request. Not currently used.
+     :return: None
+     """
     remote_addr = websocket.remote_address
+    client_name: Optional[str] = None
     try:
         logging.info("New connection from %s:%s", remote_addr[0],
                      remote_addr[1])
         while True:
-            message_string = yield from websocket.recv()
-            message_id = handle_message_string(remote_addr, message_string)
-            response = json.dumps({'status': 'enqueued', 'id': message_id})
-            yield from websocket.send(response)
+            message_string = await websocket.recv()
+            try:
+                message = json.loads(message_string)
+                logging.debug("message from %s: %s", remote_addr[0], message)
+            except ValueError:
+                logging.error("Message from %s (%s) is not valid JSON", client_name, remote_addr)
+                continue
+            if 'type' not in message:
+                logging.error("Message from %s (%s) has no type. Discarding.", client_name, remote_addr)
+            elif message['type'] == 'auth':
+                client_name = handle_auth_message(remote_addr, message, websocket)
+            elif not client_name:
+                logging.error("Received non-auth type message from un-authed client %s", remote_addr)
+            elif message['type'] == 'output':
+                message_id = handle_output_message(remote_addr, client_name, message)
+                response = json.dumps({'type': 'output_ack', 'status': 'enqueued', 'id': message_id})
+                await websocket.send(response)
+            else:
+                logging.error("Unknown message from %s type: %s", remote_addr, message['type'])
     except websockets.exceptions.ConnectionClosed as e:
         logging.info("Connection from %s:%s closed: %s", remote_addr[0],
                      remote_addr[1], str(e))
+    finally:
+        handle_client_disconnect(remote_addr, client_name)
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     description = "Record ping results to some database."
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-c', '--config-file', default='ping.conf',
-                        help="Path to config file. Default is ./ping.conf")
-    parser.add_argument('-f', '--foreground', action='store_true',
-                        help="Run in foreground and log to stderr.")
-    parser.add_argument('-d', '--debug', dest='log_level',
-                        default=logging.INFO, action='store_const',
-                        const=logging.DEBUG,
-                        help="Enable debug-level logging.")
+    parser = misc.make_generic_parser(description)
     args = parser.parse_args()
     return args
 
 
-def startup_checks(args):
+def startup_checks(args, db: DatabaseMysql):
     """ Checks the server should do before it is ready to go. """
-    todo = 1
+    logging.debug("Checking database version...")
+    db_version = db.get_db_version()
+    logging.debug("Database schema version: %s", db_version)
+    code_version = mysql_upgrades.get_code_version()
+    logging.debug("Code schema version: %s", code_version)
+    if db_version == code_version:
+        logging.debug("Database schema version matches code version.")
+    elif db_version > code_version:
+        logging.fatal("Database schema is a later version than our code. Exiting...")
+        sys.exit(1)
+    elif db_version == -1:
+        logging.fatal("Database schema not installed. Exiting...")
+        sys.exit(2)
+    else:
+        logging.warning("Database schema version is earlier than code version. Attempting upgrade...")
+        mysql_upgrades.upgrade_database(db)
+    pass
 
 
 def main():
-    global db_queue
+    global write_queue
     args = parse_args()
     logger = logging.getLogger('websockets.server')
     logger.setLevel(logging.ERROR)
@@ -91,13 +150,15 @@ def main():
         logging.basicConfig(filename=log_filename, format=log_format,
                             level=args.log_level)
     logging.debug("Read config file: %s", args.config_file)
-    startup_checks(args)
-    db_queue = queue.Queue()
+    server_config = config_parser['server']
+    db = DatabaseMysql(server_config)
+    startup_checks(args, db)
+    write_queue = queue.Queue()
     listen_ip = config_parser['server']['ws_address']
     listen_port = int(config_parser['server']['ws_port'])
-    server = websockets.serve(listen, listen_ip, listen_port)
+    server = websockets.serve(handle_client, listen_ip, listen_port)
     logging.info("Started listening on %s:%s", listen_ip, str(listen_port))
-    writer = Writer(db_queue, config_parser['server'])
+    writer = Writer(write_queue, server_config)
     writer.start()
     asyncio.get_event_loop().run_until_complete(server)
     try:

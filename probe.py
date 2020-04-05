@@ -9,7 +9,9 @@ Note that ICMP messages can only be sent from processes running as root
 
 GNU GPL v2 license  -  see LICENSE
 """
-
+from websockets.client import WebSocketClientProtocol as WebSocket
+from asyncio import Queue as AQueue
+from queue import Queue as TQueue
 import configparser
 import websockets
 import threading
@@ -27,87 +29,35 @@ import time
 import sys
 import os
 
+import misc
+
 # ICMP parameters
 ICMP_ECHOREPLY = 0  # Echo reply (per RFC792)
 ICMP_ECHO = 8  # Echo request (per RFC792)
 ICMP_MAX_RECV = 2048  # Max size of incoming buffer
 MAX_SLEEP = 1000
+MESSAGE_ACK_TIMEOUT = 5.0  # how long to wait (seconds) before re-queueing a message to transmit
 
-output_queue = None
+results_queue = None
 event_loop = None
 keep_going = True
 
 
-def calculate_checksum(source_string):
-    """
-    A port of the functionality of in_cksum() from ping.c
-    Ideally this would act on the string as a series of 16-bit ints (host
-    packed), but this works.
-    Network data is big-endian, hosts are typically little-endian
-    """
-    countTo = (int(len(source_string) / 2)) * 2
-    sum = 0
-    count = 0
-
-    # Handle bytes in pairs (decoding as short ints)
-    loByte = 0
-    hiByte = 0
-    while count < countTo:
-        if (sys.byteorder == "little"):
-            loByte = source_string[count]
-            hiByte = source_string[count + 1]
-        else:
-            loByte = source_string[count + 1]
-            hiByte = source_string[count]
-        sum = sum + (hiByte * 256 + loByte)
-        count += 2
-
-    # Handle last byte if applicable (odd-number of bytes)
-    # Endianness should be irrelevant in this case
-    if countTo < len(source_string):  # Check for odd length
-        loByte = source_string[len(source_string) - 1]
-        sum += loByte
-
-    sum &= 0xffffffff   # Truncate sum to 32 bits (a variance from ping.c)
-
-    sum = (sum >> 16) + (sum & 0xffff)    # Add high 16 bits to low 16 bits
-    sum += (sum >> 16)                    # Add carry from above (if any)
-    answer = ~sum & 0xffff                # Invert and truncate to 16 bits
-    answer = socket.htons(answer)
-
-    return answer
-
-
-def is_valid_ipv4_address(addr):
-    parts = addr.split(".")
-    if not len(parts) == 4:
-        return False
-    for part in parts:
-        try:
-            number = int(part)
-        except ValueError:
-            return False
-        if number > 255 or number < 0:
-            return False
-    return True
-
-
-def to_ip(addr):
-    if is_valid_ipv4_address(addr):
-        return addr
-    return socket.gethostbyname(addr)
-
-
 class Pinger(object):
+    """ A wrapper class for a thread that pings hosts and adds results to a queue.
+
+    Uses raw IP sockets so it requires root (or some other convoluted privileges).
+    """
+
     def __init__(self, destinations, timeout=500, packet_size=55,
-                 output=sys.stdout, own_id=None, sourceaddress=False):
+                 output=sys.stdout, own_id=None, source_address=False):
         logging.debug("Initialized Pinger. timeout: %i", timeout)
         self.destinations = [socket.gethostbyname(_) for _ in destinations]
         self.output = output
         self.timeout = timeout
         self.packet_size = packet_size
-        if sourceaddress is not False:
-            self.sourceaddress = socket.gethostbyname(sourceaddress)
+        if source_address is not False:
+            self.source_address = socket.gethostbyname(source_address)
         if own_id is None:
             self.own_id = os.getpid() & 0xFFFF  # just the 2 low-order bytes
         else:
@@ -116,6 +66,45 @@ class Pinger(object):
         self.seq_number = 0
         self.send_count = 0
         self.receive_count = 0
+
+    def calculate_checksum(self, source_string):
+        """
+        A port of the functionality of in_cksum() from ping.c
+        Ideally this would act on the string as a series of 16-bit ints (host
+        packed), but this works.
+        Network data is big-endian, hosts are typically little-endian
+        """
+        countTo = (int(len(source_string) / 2)) * 2
+        sum = 0
+        count = 0
+
+        # Handle bytes in pairs (decoding as short ints)
+        loByte = 0
+        hiByte = 0
+        while count < countTo:
+            if (sys.byteorder == "little"):
+                loByte = source_string[count]
+                hiByte = source_string[count + 1]
+            else:
+                loByte = source_string[count + 1]
+                hiByte = source_string[count]
+            sum = sum + (hiByte * 256 + loByte)
+            count += 2
+
+        # Handle last byte if applicable (odd-number of bytes)
+        # Endianness should be irrelevant in this case
+        if countTo < len(source_string):  # Check for odd length
+            loByte = source_string[len(source_string) - 1]
+            sum += loByte
+
+        sum &= 0xffffffff  # Truncate sum to 32 bits (a variance from ping.c)
+
+        sum = (sum >> 16) + (sum & 0xffff)  # Add high 16 bits to low 16 bits
+        sum += (sum >> 16)  # Add carry from above (if any)
+        answer = ~sum & 0xffff  # Invert and truncate to 16 bits
+        answer = socket.htons(answer)
+
+        return answer
 
     def header2dict(self, names, struct_format, data):
         """
@@ -145,10 +134,14 @@ class Pinger(object):
 
     def run(self):
         """ send and receive pings """
-        # self.setup_signal_handler()
+        global keep_going
         start_time = time.time()
         iteration = 0
-        current_socket = self.make_raw_socket()
+        try:
+            current_socket = self.make_raw_socket()
+        except PermissionError:
+            logging.critical("Need root to make a raw socket. Shutting down...")
+            keep_going = False
 
         while keep_going:
             logging.debug("Inside main loop")
@@ -192,7 +185,7 @@ class Pinger(object):
 
         # Calculate the checksum on the data and the dummy header.
         # Checksum is in network order
-        checksum = calculate_checksum(header + data)
+        checksum = self.calculate_checksum(header + data)
         # Now that we have the right checksum, we put that in. It's just easier
         # to make up a new header than to stuff it into the dummy.
         header = struct.pack(
@@ -304,42 +297,118 @@ def _ping(hosts, output):
     p.run()
 
 
-@asyncio.coroutine
-def transmit_loop(config_parser):
-    """ async loop for transmitting pings data to collector """
-    id = random.randint(0, 2**40)
+async def maintain_collector_connection(config: configparser.SectionProxy,
+                                        results_queue: TQueue,
+                                        unconfirmed_list: list):
+    """ Coroutine to connect to collector and re-connect if connection fails.
+
+    Starts the other coroutines and restarts them if they stop.
+
+    :param config: SectionProxy configuration section from config file
+    :param results_queue: thread-safe queue of messages to transmit
+    :param unconfirmed_list: a list of unconfirmed transmitted messages
+    :return: None
+    """
+    global keep_going
+    url = config['ws_url']
+    transmit_task = None
+    receive_task = None
+    requeue_task = None
     while keep_going:
-        url = config_parser['probe']['ws_url']
         logging.info("Connecting to websocket: %s", url)
         try:
-            websocket = yield from websockets.connect(url)
+            websocket = await websockets.connect(url)
+            logging.debug("Connected to websocket %s", url)
+            auth_message = {'type': 'auth', 'name': config['name']}
+            await websocket.send(json.dumps(auth_message))
         except OSError as e:
             logging.error("Error connecting to websocket: %s", str(e))
-            yield from asyncio.sleep(1)
+            await asyncio.sleep(1)
             continue
+        while keep_going and websocket.open:
+            if transmit_task is None or transmit_task.done():
+                transmit_task = asyncio.ensure_future(transmit_results(results_queue, websocket, unconfirmed_list))
+            if receive_task is None or receive_task.done():
+                receive_task = asyncio.ensure_future(receive_messages(websocket, unconfirmed_list))
+            if requeue_task is None or requeue_task.done():
+                requeue_task = asyncio.ensure_future(requeue_stale_messages(unconfirmed_list, results_queue))
+            await asyncio.sleep(1)
+        logging.info("websocket died or keep_going is False")
+    logging.info("keep_going is False in maintain_collector_connection()")
+
+
+async def transmit_results(results_queue: TQueue, websocket: WebSocket, unconfirmed_list: list):
+    """ Coroutine to send ping results to collector (server) over a websocket.
+
+    JSON-dumps items from the queue and sends them over the websocket. Adds
+    each sent item to the unconfirmed_queue for some other task to verify.
+
+    :param results_queue: thread-safe queue of messages to transmit
+    :param websocket: already connected websocket from websockets package
+    :param unconfirmed_list: a list of unconfirmed transmitted messages
+    :return: None
+    """
+    global keep_going
+    nonce = random.randint(0, 2 ** 40)
+    while keep_going:
         try:
-            while keep_going:
-                logging.debug("Waiting for data to transmit")
-                try:
-                    data = output_queue.get(timeout=0.5)
-                    logging.debug("Read data from output queue")
-                except queue.Empty:
-                    continue
-                data['id'] = id
-                id += 1
-                yield from websocket.send(json.dumps(data))
-                response_string = yield from websocket.recv()
-                response = json.loads(response_string)
-                if 'id' in response and response['id'] == id-1:
-                    continue
-                # if we get here, we did not get confirmation that the message was enqueued.
-                # add the poll data back in to the transmit queue for re-transmission
-                logging.info("Re-enqueueing data that did not transmit successfully.")
-                output_queue.put(data)
-        except Exception as e:
-            logging.error("Exception in transmit loop: %s", str(e))
-            output_queue.put(data)
-            logging.info("Re-enqueueing data after transmit error.")
+            data = results_queue.get(block=False)
+            logging.debug("Read data from output queue")
+        except queue.Empty:
+            await asyncio.sleep(1.0)
+            continue
+        data['id'] = nonce
+        data['message_transmit_time'] = time.time()
+        nonce += 1
+        await websocket.send(json.dumps(data))
+        unconfirmed_list.append(data)
+
+
+async def receive_messages(websocket: WebSocket, unconfirmed_list: list):
+    """ Coroutine to receive any messages from collector and send to handlers.
+
+    :param websocket: already connected websocket from websockets package
+    :param unconfirmed_list: a list of unconfirmed transmitted messages
+    :return: None
+    """
+    global keep_going
+    while keep_going:
+        message_string = await websocket.recv()
+        message = json.loads(message_string)
+        try:
+            if message['type'] == 'output_ack':
+                # this magic removes any messages in unconfirmed_list that have the same id
+                #  as the acknowledgement message we just received.
+                old_len = len(unconfirmed_list)
+                unconfirmed_list[:] = [_ for _ in unconfirmed_list if message['id'] != _['id']]
+                new_len = len(unconfirmed_list)
+                logging.debug("Confirmed %i messages in unconfirmed_list", old_len - new_len)
+            else:
+                logging.error("Unknown websocket message type received: %s", message_string)
+        except KeyError:
+            logging.error("received websocket message without type: %s", message_string)
+
+
+async def requeue_stale_messages(unconfirmed_list: list, results_queue: TQueue):
+    """ Re-queue messages in unconfirmed_list if they are not acknowledged.
+
+     Waits MESSAGE_ACK_TIMEOUT seconds before re-queueing.
+
+    :param unconfirmed_list: a list of unconfirmed transmitted messages
+    :param results_queue: thread-safe queue of messages to transmit
+    :return:
+    """
+    global keep_going
+    while keep_going:
+        stale_cutoff_time = time.time() - MESSAGE_ACK_TIMEOUT
+        await asyncio.sleep(1.0)
+        # it is critical that these two list comprehensions have opposite filters
+        stale_messages = [_ for _ in unconfirmed_list if _['message_transmit_time'] < stale_cutoff_time]
+        unconfirmed_list[:] = [_ for _ in unconfirmed_list if _['message_transmit_time'] >= stale_cutoff_time]
+        for message in stale_messages:
+            if stale_cutoff_time > message['message_transmit_time']:
+                logging.info("Re-enqueueing data that was not acknowledged. id: %s", message['id'])
+                results_queue.put(message)
 
 
 def signal_handler(signum, frame):
@@ -350,12 +419,16 @@ def signal_handler(signum, frame):
 
 
 def shutdown():
+    logging.debug("Shutting down...")
     global keep_going
     global event_loop
     keep_going = False
+    sleep_time = 2
+    logging.warning("Stopping event loop in %i seconds", sleep_time)
+    time.sleep(sleep_time)
     event_loop.stop()
     logging.warning("Probe shutting down with %i messages in transmit queue.",
-                    output_queue.qsize())
+                    results_queue.qsize())
     # sys.exit(0)
 
 
@@ -369,15 +442,7 @@ def setup_signal_handler():
 
 def parse_args():
     description = "Ping stuff and send the responses to a recording server."
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-c', '--config-file', default='ping.conf',
-                        help="Path to config file. Default is ./ping.conf")
-    parser.add_argument('-f', '--foreground', action='store_true',
-                        help="Run in foreground and log to stderr.")
-    parser.add_argument('-d', '--debug', dest='log_level',
-                        default=logging.INFO, action='store_const',
-                        const=logging.DEBUG,
-                        help="Enable debug-level logging.")
+    parser = misc.make_generic_parser(description)
     args = parser.parse_args()
     return args
 
@@ -397,33 +462,36 @@ def ping_targets_from_config(config):
 
 
 def main():
-    global output_queue
+    global results_queue
     global event_loop
     args = parse_args()
     log_format = '%(asctime)s %(levelname)s:%(module)s:%(funcName)s# ' \
                  + '%(message)s'
     config_parser = configparser.ConfigParser(allow_no_value=True)
     config_parser.read(args.config_file)
+    probe_config = config_parser['probe']
     if args.foreground:
         logging.basicConfig(format=log_format, level=args.log_level)
     else:
-        log_filename = config_parser['probe']['log_file']
+        log_filename = probe_config['log_file']
         logging.basicConfig(filename=log_filename, format=log_format,
                             level=args.log_level)
     logging.debug("Read config file: %s", args.config_file)
     setup_signal_handler()
-    output_queue = queue.Queue()
-    event_loop = asyncio.get_event_loop()
+    results_queue = TQueue()
+    unconfirmed_list = []
     hosts = ping_targets_from_config(config_parser)
-    args = (hosts, output_queue)
+    args = (hosts, results_queue)
     ping_thread = threading.Thread(target=_ping, args=args)
     logging.info("Starting ping thread")
     ping_thread.start()
     logging.info("Starting event loop")
-    event_loop.create_task(transmit_loop(config_parser))
+    event_loop = asyncio.get_event_loop()
+    main_task = maintain_collector_connection(probe_config, results_queue, unconfirmed_list)
     try:
-        event_loop.run_forever()
+        event_loop.run_until_complete(main_task)
     except KeyboardInterrupt:
+        logging.debug("Caught KeyboardInterrupt in main()")
         shutdown()
 
 

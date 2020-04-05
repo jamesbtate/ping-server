@@ -14,6 +14,8 @@ import time
 import os
 import gc
 
+import misc
+
 from flask import Flask, request, render_template, send_from_directory,\
                   jsonify, send_file
 app = Flask(__name__)
@@ -39,11 +41,11 @@ def favicon():
 def index():
     pairs = db.get_src_dst_pairs()
     for pair in pairs:
-        src = pair['src']
+        prober_name = pair['prober_name']
         dst = pair['dst']
-        dt = db.last_poll_time_by_pair(src, dst)
+        dt = db.last_poll_time_by_pair(prober_name, dst)
         pair['mtime'] = dt.isoformat()
-        pair['polls'] = db.get_poll_counts_by_pair(src, dst)
+        pair['polls'] = db.get_poll_counts_by_pair(prober_name, dst)
     data = {
         'src_dst_pairs': pairs
     }
@@ -61,7 +63,7 @@ def graph_page(pair_id):
     retrieve_time = time.time() - t
     data = {
         'pair_id': pair_id,
-        'src': pair['src'],
+        'prober_name': pair['prober_name'],
         'dst': pair['dst'],
         'start_time': start_time,
         'stop_time': stop_time,
@@ -100,18 +102,15 @@ def garbage_collect():
     return "Garbage collected"
 
 
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+
 def parse_args():
     description = "Run development webserver for ping project"
-    parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-c', '--config-file', default='ping.conf',
-                        help="Path to config file. Default is ./ping.conf")
-    parser.add_argument('-d', '--debug', action='store_true',
-                        help="Enable debug-level logging")
+    parser = misc.make_generic_parser(description)
     args = parser.parse_args()
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-    if args.debug:
-        logger.setLevel(logging.DEBUG)
     return args
 
 

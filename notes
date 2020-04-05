@@ -8,3 +8,12 @@ rrdtool graph /var/www/html/ping/test1.png -s -10min -l 0 -w 600 -h 300 DEF:a=te
 rrdtool graph /var/www/html/ping/test1.png -s -60min -l 0 -w 600 -h 300 DEF:a=test1.rrd:test1:AVERAGE LINE2:a#0055ff GPRINT:a:LAST:"Current\: %lf\n" GPRINT:a:AVERAGE:"Average\: %lf\n" GPRINT:a:MAX:"Maximum\: %lf" CDEF:unavailable=a,UN,INF,0,IF AREA:unavailable#cc3333
 
 rrdtool graph /var/www/html/ping/ns1.png -s -60min -l 0 -w 600 -h 300 DEF:a=ns1.rrd:ping:AVERAGE LINE2:a#0055ff GPRINT:a:LAST:"Current\: %lf" GPRINT:a:AVERAGE:"Average\: %lf" GPRINT:a:MIN:"Minimum\: %lf" GPRINT:a:MAX:"Maximum\: %lf" CDEF:unavailable=a,UN,INF,0,IF AREA:unavailable#cc3333
+
+# color scheme
+# https://coolors.co/94e8b4-56a3a6-c0d8e0-9197ae-273043
+#56a3a6 vibrant - main color
+#94e8b4 alternate vibrant
+#c0d8e0 light color (use for background)
+#9197ae alternate light color
+#273043 dark
+#191f2b very dark

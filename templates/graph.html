@@ -1,9 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Graph{% endblock %}
+{% block title %}Graph {{ prober_name }} to {{ dst }}{% endblock %}
 {% block body %}
 <body>
-<a href="/">Home</a>
-<h2>{{ src }} to {{ dst }}</h2>
+<h2>{{ prober_name }} to {{ dst }}</h2>
 <h3>Statistics</h3>
 <p> Data points: {{ statistics.echos }}
     Successes: {{ statistics.successes }}

@@ -14,7 +14,6 @@ class Writer(threading.Thread):
     def __init__(self, db_queue, db_params):
         threading.Thread.__init__(self)
         self.db_queue = db_queue
-        # self.db = DatabaseMysql(db_params)
         self.db = DatabaseInfluxDB(db_params)
         self.keep_going = True
 
@@ -35,10 +34,11 @@ class Writer(threading.Thread):
         """
         send_time = message['send_time']
         remote_ip = message['remote_ip']
+        prober_name = message['prober_name']
         for reply in message['replies']:
             target = reply[0]
             receive_time = reply[1]
-            self.db.record_poll_data(remote_ip, target, send_time, receive_time)
+            self.db.record_poll_data(prober_name, target, send_time, receive_time)
 
     def run(self):
         logging.info("Started DB writer")
