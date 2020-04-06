@@ -5,7 +5,9 @@ A distributed application for running constant pings against hosts and logging t
 # Production Setup
 
 ## Simplified Setup
-1. `./docker_build.bash`
+1. `./docker_build_new.bash`
+   1. Above command uses multi-stage builds. It requires docker 17.something.
+   2. Or use this command with an older docker version. It uses the individual Dockerfile-*thing* files: `./docker_build_old.bash`
 1. `./docker_create.bash`
 1. `./docker_start.bash`
 
@@ -31,7 +33,7 @@ A distributed application for running constant pings against hosts and logging t
 0. Create config files.
    1. Copy `default.conf` to `ping.conf`
    1. Copy `config.default.py` to `config.py`
-   2. Modify values as necessary. If you change database stuff, you need to modify `docker_build.bash` too.
+   2. Modify values as necessary. If you change database stuff, you need to re-run `docker_build_X.bash` too.
 0. Add prober to database
    1. `mysql -h 127.0.0.1 -P 13306 -u ping -pping ping`
    1. ```INSERT INTO prober (`name`,`key`,`added`) VALUES ('prober1', 'prober1', NOW());```
