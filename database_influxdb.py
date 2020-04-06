@@ -69,6 +69,8 @@ class DatabaseInfluxDB(Database):
         logging.debug("Querying: %s | %s", query, params)
         result_set = self.client.query(query, bind_params=params, epoch='s')
         points = list(result_set.get_points())
+        if not points:
+            return 0
         return points[0]['count']
 
     # @cachedmethod(operator.attrgetter('cache'))
@@ -182,7 +184,10 @@ class DatabaseInfluxDB(Database):
         logging.debug("Querying: %s | %s", query, params)
         result_set = self.client.query(query, bind_params=params, epoch='s')
         points = list(result_set.get_points())
-        dt = datetime.datetime.fromtimestamp(points[0]['time'])
+        if not points:
+            dt = datetime.datetime.min
+        else:
+            dt = datetime.datetime.fromtimestamp(points[0]['time'])
         return dt
 
     def read_records(self, prober_name, dst_ip, start_time, end_time):
