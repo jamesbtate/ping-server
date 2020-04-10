@@ -11,8 +11,7 @@ import time
 import sys
 import os
 
-# from functools import lru_cache
-# from cachetools import LRUCache, cachedmethod
+from cachetools import TTLCache, cachedmethod
 
 from database import Database
 from database_mysql import DatabaseMysql
@@ -40,7 +39,7 @@ class DatabaseInfluxDB(Database):
         # this does nothing if the DB already exists. I think.
         self.client.create_database('ping')
         self.client.alter_retention_policy('autogen', duration='4w', shard_duration='1d')
-        # self.cache = LRUCache(maxsize=1048576, getsizeof=len)
+        self.cache = TTLCache(maxsize=1048576, ttl=60, getsizeof=len)
 
     def get_src_dst_pairs(self):
         return self.databaseMysql.get_src_dst_pairs()
@@ -71,7 +70,7 @@ class DatabaseInfluxDB(Database):
         points = list(result_set.get_points())
         return points[0]['count']
 
-    # @cachedmethod(operator.attrgetter('cache'))
+    @cachedmethod(operator.attrgetter('cache'))
     def get_poll_data_by_id(self, pair_id, start=None, end=None,
                             convert_to_datetime=False):
         """ Get poll data from DB for specific src_dst pair.
