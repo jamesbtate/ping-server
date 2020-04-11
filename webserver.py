@@ -80,7 +80,11 @@ def graph_image(pair_id):
     records = db.get_poll_data_by_id(pair_id, start=start_time, end=stop_time,
                                      convert_to_datetime=True)
     t = time.time()
-    bytes_io = graphing.make_graph_png(pair, records)
+    kwargs = {}
+    if request.args.get('success_rate'):
+        kwargs['reduce'] = 60
+        kwargs['success_rate'] = True
+    bytes_io = graphing.make_graph_png(pair, records, **kwargs)
     bytes_io.seek(0)
     draw_time = time.time() - t
     return send_file(bytes_io, mimetype='image/png')
