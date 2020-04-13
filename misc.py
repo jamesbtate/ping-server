@@ -63,8 +63,8 @@ def get_time_extents(args, default=3601):
             start_time  # start of time window/extents (integer)
             stop_time   # end of time window/extents (integer)
     """
-    start_time = args.get('start_time', default=None, type=int)
-    stop_time = args.get('stop_time', default=None, type=int)
+    start_time = int(args.get('start_time', default=0))
+    stop_time = int(args.get('stop_time', default=0))
     window = args.get('window', default=None)
     if window:
         stop_time = int(time.time())

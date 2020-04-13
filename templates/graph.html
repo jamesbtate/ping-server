@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 {% block title %}Graph {{ prober_name }} to {{ dst }}{% endblock %}
 {% block body %}
 <body>
@@ -9,15 +10,15 @@
     Timeouts: {{ statistics.timeouts }}
     Success Rate:
     {% if statistics.echos > 0 %}
-        {{ "%.2f"|format(statistics.successes / statistics.echos * 100) }}%
+        {{ success_rate|floatformat:2 }}
     {% else %}
         0.0%
     {% endif %}
 </p>
 <p>
-    Minimum: {{ "%.1fms"|format(statistics.minimum * 1000) }}
-    Maximum: {{ "%.1fms"|format(statistics.maximum * 1000) }}
-    Average (mean): {{ "%.1fms"|format(statistics.mean * 1000) }}
+    Minimum: {{ minimum|floatformat:1 }}ms
+    Maximum: {{ maximum|floatformat:1 }}ms
+    Average (mean): {{ mean|floatformat:1 }}ms
 </p>
 <h3>Graph</h3>
 <img src='/graph_image/{{ pair_id }}?start_time={{ start_time }}&stop_time={{ stop_time }}' />
@@ -39,7 +40,10 @@
     <input type="submit" value="Go" id="go"/>
 </p>
 <h3>Debug</h3>
-<p>Data retrieval time: {{ "%0.3f" % retrieve_time }} seconds</p>
+<p>Data retrieval time: {{ retrieve_time|floatformat:3 }} seconds</p>
+
 {# <p>Graph draw time: {{ "%0.3f" % draw_time }} seconds</p> #}
+
+{# <pre> {% filter force_escape %} {% debug %} {% endfilter %} </pre> #}
 
 {% endblock %}

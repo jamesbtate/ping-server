@@ -15,7 +15,16 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from pingweb import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('hello', views.hello),
+    path('test', views.test),
+    path('', views.index),
+    path('graph/<int:pair_id>', views.graph_page),
+    path('graph_image/<int:pair_id>', views.graph_image),
+    path('about', views.about),
+    path('gc', views.garbage_collect),
+    path('cache_info/get_poll_data', views.cache_info_get_poll_data),
 ]
