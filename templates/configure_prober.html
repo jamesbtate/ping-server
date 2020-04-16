@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Probers{% endblock %}
+
+{% block above_content %}
+    {%  include "configure_navbar.html" %}
+{% endblock %}
+
+{% block body %}
+<h1 class="title">Prober Configuration</h1>
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Description</th>
+    </tr>
+    {% for prober in probers %}
+        <tr>
+            <td><a href="/configure/prober/{{ prober.id }}">{{ prober.id }}</a></td>
+            <td>{{ prober.name }}</td>
+            <td>{{ prober.description }}</td>
+        </tr>
+    {% endfor %}
+</table>
+{% endblock %}

@@ -3,12 +3,14 @@
 Django views for the pingweb application
 """
 
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import HttpResponse
 import json
 import time
 import os
 import gc
+
+from pingweb.models import Prober
 
 from database_mysql import DatabaseMysql
 from database_influxdb import DatabaseInfluxDB
@@ -109,3 +111,13 @@ def cache_info_get_poll_data(request):
 def garbage_collect(request):
     gc.collect()
     return HttpResponse("Garbage collected")
+
+
+def configure(request):
+    return redirect('/configure/prober')
+
+
+def configure_prober(request):
+    probers = Prober.objects.all()
+    data = {'probers': probers}
+    return render(request, 'configure_prober.html', data)
