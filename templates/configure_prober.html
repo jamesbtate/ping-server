@@ -7,19 +7,31 @@
 {% endblock %}
 
 {% block body %}
-<h1 class="title">Prober Configuration</h1>
-<table>
-    <tr>
-        <th>ID</th>
-        <th>Name</th>
-        <th>Description</th>
-    </tr>
-    {% for prober in probers %}
+    <h1 class="title">Prober Configuration</h1>
+    <table class="list">
         <tr>
-            <td><a href="/configure/prober/{{ prober.id }}">{{ prober.id }}</a></td>
-            <td>{{ prober.name }}</td>
-            <td>{{ prober.description }}</td>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Created</th>
         </tr>
-    {% endfor %}
-</table>
+        {% for prober in probers %}
+            <tr>
+                <td><a href="/configure/prober/{{ prober.id }}">{{ prober.id }}</a></td>
+                <td>{{ prober.name }}</td>
+                <td>{{ prober.description }}</td>
+                <td>{{ prober.added }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <h3>New Prober</h3>
+    <form method="post">
+        {% csrf_token %}
+        <table class="form">
+            {{ form.as_table }}
+        </table>
+        <input type="submit" value="Submit">
+    </form>
+
 {% endblock %}

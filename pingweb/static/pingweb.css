@@ -60,11 +60,15 @@ div#content {
     margin-top: 8px;
 }
 
-table, th, td {
+table.list, table.list th, table.list td {
     border: 1px solid black;
     border-collapse: collapse;
 }
 
-th, td {
+table.list th, table.list td {
     padding: 5px;
+}
+
+table.form th {
+    text-align: right;
 }

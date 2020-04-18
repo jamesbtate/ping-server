@@ -6,6 +6,7 @@
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
+from django.forms import ModelForm, TextInput
 
 
 class Prober(models.Model):
@@ -13,15 +14,24 @@ class Prober(models.Model):
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     key = models.CharField(max_length=255)
-    added = models.DateTimeField()
+    added = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'prober'
 
 
+class ProberForm(ModelForm):
+    class Meta:
+        model = Prober
+        fields = ['name', 'description', 'key']
+        widgets = {
+            'description': TextInput(attrs={'size': 42}),
+        }
+
+
 class ProberTarget(models.Model):
     id = models.BigAutoField(primary_key=True)
-    prober = models.ForeignKey(Prober, models.DO_NOTHING)
+    prober = models.ForeignKey(Prober, models.CASCADE)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     ip = models.PositiveIntegerField()

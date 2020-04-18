@@ -4,13 +4,13 @@ Django views for the pingweb application
 """
 
 from django.shortcuts import render, redirect
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 import json
 import time
 import os
 import gc
 
-from pingweb.models import Prober
+from pingweb.models import Prober, ProberForm
 
 from database_mysql import DatabaseMysql
 from database_influxdb import DatabaseInfluxDB
@@ -117,7 +117,14 @@ def configure(request):
     return redirect('/configure/prober')
 
 
-def configure_prober(request):
+def configure_prober(request: HttpRequest):
     probers = Prober.objects.all()
-    data = {'probers': probers}
+    if request.method == 'POST':
+        form = ProberForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect(request.path_info)
+    else:
+        form = ProberForm()
+    data = {'probers': probers, 'form': form}
     return render(request, 'configure_prober.html', data)
