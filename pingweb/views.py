@@ -19,7 +19,8 @@ import config
 import misc
 
 
-params = read_config(config.LEGACY_CONFIG_FILE)['server']
+from django.conf import settings
+params = read_config(settings.LEGACY_CONFIG_FILE)['server']
 db = DatabaseInfluxDB(params)
 
 

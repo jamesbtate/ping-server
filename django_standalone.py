@@ -11,5 +11,6 @@ from django.conf import settings
 import pingweb.settings
 
 # settings.configure(pingweb.settings)
-os.environ['DJANGO_SETTINGS_MODULE'] = 'pingweb.settings'
+if 'DJANGO_SETTINGS_MODULE' not in os.environ:
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'pingweb.settings'
 django.setup()
