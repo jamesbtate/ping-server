@@ -57,7 +57,7 @@ def graph_page(request, pair_id):
     retrieve_time = time.time() - t
     success_rate = 0
     if statistics['echos'] > 0:
-        success_rate = statistics['successes'] / statistics['echos'] * 100,
+        success_rate = statistics['successes'] / statistics['echos'] * 100
     data = {
         'pair_id': pair_id,
         'prober_name': pair.prober.name,

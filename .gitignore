@@ -13,3 +13,4 @@ data.*
 *.sqlite
 *.sqlite3
 config.py
+config_local.py
