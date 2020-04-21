@@ -11,7 +11,7 @@ import time
 import sys
 import os
 
-from cachetools import TTLCache, cachedmethod
+from cachetools import TTLCache, cachedmethod, cached
 from typing import List, Iterable
 
 from database import Database
@@ -24,6 +24,7 @@ LATENCY_PRECISION = 4  # number of decimals on the latency value (seconds)
                        #  which is precise to 100us (0.1ms)
 
 src_dst_pairs = {}  # a dumb infinite cache of SrcDst pair IDs
+class_cache = TTLCache(maxsize=8192, ttl=60)
 
 
 class DatabaseInfluxDB(Database):
@@ -57,16 +58,14 @@ class DatabaseInfluxDB(Database):
         return SrcDst.objects.get(id=pair_id)
 
     @staticmethod
+    @cached(class_cache)
     def src_dst_id(prober_name, dst) -> int:
         """ Gets the ID of the src-dst pair from the DB, maybe creating the entry.
 
         Create a new src-dst pair in the DB if it does not already exist.
-        Maintains a dumb infinite cache of src-dst pairs in memory.
 
-        Returns the ID of src-dst pair. """
-        search_tuple = (prober_name, dst)
-        if search_tuple in src_dst_pairs:
-            return src_dst_pairs[search_tuple]
+        Returns the ID of src-dst pair.
+        """
         objects = SrcDst.objects.filter(prober__name=prober_name, dst=dst)
         if not objects:
             # we need to create the src-dst pair
@@ -80,7 +79,6 @@ class DatabaseInfluxDB(Database):
         else:
             result = objects[0]
             pair_id = result.id
-        src_dst_pairs[search_tuple] = pair_id
         return pair_id
 
     def get_poll_counts_by_pair(self, prober_name, dst_ip) -> int:
