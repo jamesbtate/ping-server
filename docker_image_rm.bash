@@ -1,5 +1,5 @@
 #!/bin/bash
-docker image rm ping:base
-docker image rm ping:probe
-docker image rm ping:collector
-docker image rm ping:web
+docker image rm -f ping:base
+docker image rm -f ping:probe
+docker image rm -f ping:collector
+docker image rm -f ping:web

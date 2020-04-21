@@ -35,4 +35,4 @@ CMD ["bash", "start_collector.bash"]
 
 
 FROM base as web
-CMD ["python", "webserver.py"]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:5000"]
