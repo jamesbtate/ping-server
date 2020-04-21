@@ -12,7 +12,6 @@ import gc
 
 from pingweb.models import Prober, ProberForm
 
-from database_mysql import DatabaseMysql
 from database_influxdb import DatabaseInfluxDB
 from server import read_config
 import graphing
@@ -35,11 +34,11 @@ def test(request):
 def index(request):
     pairs = db.get_src_dst_pairs()
     for pair in pairs:
-        prober_name = pair['prober_name']
-        dst = pair['dst']
+        prober_name = pair.prober.name
+        dst = pair.dst
         dt = db.last_poll_time_by_pair(prober_name, dst)
-        pair['mtime'] = dt.isoformat()
-        pair['polls'] = db.get_poll_counts_by_pair(prober_name, dst)
+        pair.mtime = dt.isoformat()
+        pair.polls = db.get_poll_counts_by_pair(prober_name, dst)
     data = {
         'src_dst_pairs': pairs
     }
@@ -60,8 +59,8 @@ def graph_page(request, pair_id):
         success_rate = statistics['successes'] / statistics['echos'] * 100,
     data = {
         'pair_id': pair_id,
-        'prober_name': pair['prober_name'],
-        'dst': pair['dst'],
+        'prober_name': pair.prober.name,
+        'dst': pair.dst,
         'start_time': start_time,
         'stop_time': stop_time,
         'retrieve_time': retrieve_time,

@@ -6,7 +6,6 @@ import threading
 import datetime
 import logging
 import queue
-from database_mysql import DatabaseMysql
 from database_influxdb import DatabaseInfluxDB
 
 

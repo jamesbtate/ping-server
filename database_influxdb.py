@@ -12,10 +12,10 @@ import sys
 import os
 
 from cachetools import TTLCache, cachedmethod
+from typing import List, Iterable
 
 from database import Database
-from database_mysql import DatabaseMysql
-from datafile import Datafile
+from pingweb.models import SrcDst,Prober
 
 
 TIMEOUT_VALUE = 127.0  # magic value indicating probe timed out
@@ -23,13 +23,14 @@ LATENCY_PRECISION = 4  # number of decimals on the latency value (seconds)
                        #  4 means #.#### seconds is the latency precision
                        #  which is precise to 100us (0.1ms)
 
+src_dst_pairs = {}  # a dumb infinite cache of SrcDst pair IDs
+
 
 class DatabaseInfluxDB(Database):
     def __init__(self, db_params):
         self.db_params = db_params
         self.client = None
         super().__init__()
-        self.databaseMysql = DatabaseMysql(db_params)
         self.client = InfluxDBClient(db_params['influxdb_host'],
                                      db_params['influxdb_port'],
                                      db_params['influxdb_user'],
@@ -41,21 +42,46 @@ class DatabaseInfluxDB(Database):
         self.client.alter_retention_policy('autogen', duration='4w', shard_duration='1d')
         self.cache = TTLCache(maxsize=1048576, ttl=60, getsizeof=len)
 
-    def get_src_dst_pairs(self):
-        return self.databaseMysql.get_src_dst_pairs()
+    @staticmethod
+    def get_prober_id_by_name(prober_name: str) -> int:
+        """ Returns the ID of the prober with the given name. """
+        return Prober.objects.get(name=prober_name).id
 
-    def get_src_dst_by_id(self, pair_id):
+    @staticmethod
+    def get_src_dst_pairs() -> Iterable[SrcDst]:
+        return SrcDst.objects.all()
+
+    @staticmethod
+    def get_src_dst_by_id(pair_id) -> SrcDst:
         """ Gets a source-destination pair from the database by ID number. """
-        return self.databaseMysql.get_src_dst_by_id(pair_id)
+        return SrcDst.objects.get(id=pair_id)
 
-    def src_dst_id(self, prober_name, dst):
+    @staticmethod
+    def src_dst_id(prober_name, dst) -> int:
         """ Gets the ID of the src-dst pair from the DB, maybe creating the entry.
 
         Create a new src-dst pair in the DB if it does not already exist.
-        Maintains a cache of src-dst pairs in memory.
+        Maintains a dumb infinite cache of src-dst pairs in memory.
 
         Returns the ID of src-dst pair. """
-        return self.databaseMysql.src_dst_id(prober_name, dst)
+        search_kwargs = {'name': prober_name, 'dst': dst}
+        if search_kwargs in self.src_dst_pairs:
+            return self.src_dst_pairs[search_kwargs]
+        objects = SrcDst.objects.filter(**search_kwargs)
+        if not objects:
+            # we need to create the src-dst pair
+            prober_id = self.get_prober_id_by_name(prober_name)
+            src_dst = SrcDst()
+            src_dst.prober_id = prober_id
+            src_dst.dst = dst
+            src_dst.save()
+            pair_id = src_dst.id()
+            logging.debug("Added SrcDst ID %i to database", pair_id)
+        else:
+            result = objects[0]
+            pair_id = result.id
+        src_dst_pairs[search_kwargs] = pair_id
+        return pair_id
 
     def get_poll_counts_by_pair(self, prober_name, dst_ip) -> int:
         """ Return the number of polls for a specific pair. """
@@ -68,6 +94,8 @@ class DatabaseInfluxDB(Database):
         logging.debug("Querying: %s | %s", query, params)
         result_set = self.client.query(query, bind_params=params, epoch='s')
         points = list(result_set.get_points())
+        if not points:
+            return 0
         return points[0]['count']
 
     @cachedmethod(operator.attrgetter('cache'))
@@ -89,8 +117,8 @@ class DatabaseInfluxDB(Database):
         if start is None:
             start = end - 3601
         src_dst = self.get_src_dst_by_id(pair_id)
-        prober_name = src_dst['prober_name']
-        dst_ip = src_dst['dst']
+        prober_name = src_dst.prober.name
+        dst_ip = src_dst.dst
         records = self.read_records(prober_name, dst_ip, start, end)
         if convert_to_datetime:
             for record in records:
@@ -99,7 +127,7 @@ class DatabaseInfluxDB(Database):
         return records
 
     @staticmethod
-    def calculate_statistics(records):
+    def calculate_statistics(records) -> dict:
         """ Calculate some statistics for a list of records.
 
             Returns a dictionary of statistical values for the list of records.
@@ -145,7 +173,7 @@ class DatabaseInfluxDB(Database):
         }
         return statistics
 
-    def record_poll_data(self, prober_name, dst_ip, send_time, receive_time):
+    def record_poll_data(self, prober_name, dst_ip, send_time, receive_time) -> None:
         """ Record results of a single poll in the database. """
         # do this to make sure there is a record created in the MySQL DB for this pair.
         pair_id = self.src_dst_id(prober_name, dst_ip)
@@ -181,10 +209,12 @@ class DatabaseInfluxDB(Database):
         logging.debug("Querying: %s | %s", query, params)
         result_set = self.client.query(query, bind_params=params, epoch='s')
         points = list(result_set.get_points())
+        if not points:
+            return datetime.datetime.fromtimestamp(0)
         dt = datetime.datetime.fromtimestamp(points[0]['time'])
         return dt
 
-    def read_records(self, prober_name, dst_ip, start_time, end_time):
+    def read_records(self, prober_name, dst_ip, start_time, end_time) -> List:
         """ Return the list of records from start to end times, inclusive.
 
             start_time and end_time are UNIX epoch seconds.

@@ -14,7 +14,7 @@
     {% for pair in src_dst_pairs %}
         <tr>
             <td><a href="/graph/{{ pair.id }}">{{ pair.id }}</a></td>
-            <td>{{ pair.prober_name }}</td>
+            <td>{{ pair.prober.name }}</td>
             <td>{{ pair.dst }}</td>
             <td>{{ pair.polls }}</td>
             <td>{{ pair.mtime }}</td>

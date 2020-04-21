@@ -16,8 +16,6 @@ import queue
 import json
 import sys
 
-from database_mysql import DatabaseMysql
-import mysql_upgrades
 import misc
 
 
@@ -113,24 +111,8 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
-def startup_checks(args, db: DatabaseMysql):
+def startup_checks(args):
     """ Checks the server should do before it is ready to go. """
-    logging.debug("Checking database version...")
-    db_version = db.get_db_version()
-    logging.debug("Database schema version: %s", db_version)
-    code_version = mysql_upgrades.get_code_version()
-    logging.debug("Code schema version: %s", code_version)
-    if db_version == code_version:
-        logging.debug("Database schema version matches code version.")
-    elif db_version > code_version:
-        logging.fatal("Database schema is a later version than our code. Exiting...")
-        sys.exit(1)
-    elif db_version == -1:
-        logging.fatal("Database schema not installed. Exiting...")
-        sys.exit(2)
-    else:
-        logging.warning("Database schema version is earlier than code version. Attempting upgrade...")
-        mysql_upgrades.upgrade_database(db)
     pass
 
 
@@ -151,8 +133,7 @@ def main():
                             level=args.log_level)
     logging.debug("Read config file: %s", args.config_file)
     server_config = config_parser['server']
-    db = DatabaseMysql(server_config)
-    startup_checks(args, db)
+    startup_checks(args)
     write_queue = queue.Queue()
     listen_ip = config_parser['server']['ws_address']
     listen_port = int(config_parser['server']['ws_port'])

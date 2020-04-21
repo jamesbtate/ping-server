@@ -146,7 +146,7 @@ def make_graph_figure(pair, records, points=True, timeouts=True,
 
     Returns a matplotlib figure
     """
-    title = str.format("Ping Results {} to {}", pair['prober_name'], pair['dst'])
+    title = str.format("Ping Results {} to {}", pair.prober.name, pair.dst)
     success_times = []
     success_values = []
     timeout_times = []
