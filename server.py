@@ -2,7 +2,7 @@
 """
 Listens for connections from transmitters and saves ping output in DB.
 """
-from writer import Writer
+
 
 from websockets.server import WebSocketServerProtocol as Websocket
 from typing import Optional
@@ -16,8 +16,9 @@ import queue
 import json
 import sys
 
+import django_standalone
+from writer import Writer
 import misc
-
 
 
 write_queue: Queue = None  # queue of messages that need to be recorded.

@@ -15,7 +15,7 @@ from cachetools import TTLCache, cachedmethod
 from typing import List, Iterable
 
 from database import Database
-from pingweb.models import SrcDst,Prober
+from pingweb.models import SrcDst, Prober
 
 
 TIMEOUT_VALUE = 127.0  # magic value indicating probe timed out
@@ -64,13 +64,13 @@ class DatabaseInfluxDB(Database):
         Maintains a dumb infinite cache of src-dst pairs in memory.
 
         Returns the ID of src-dst pair. """
-        search_kwargs = {'name': prober_name, 'dst': dst}
-        if search_kwargs in self.src_dst_pairs:
-            return self.src_dst_pairs[search_kwargs]
-        objects = SrcDst.objects.filter(**search_kwargs)
+        search_tuple = (prober_name, dst)
+        if search_tuple in src_dst_pairs:
+            return src_dst_pairs[search_tuple]
+        objects = SrcDst.objects.filter(prober__name=prober_name, dst=dst)
         if not objects:
             # we need to create the src-dst pair
-            prober_id = self.get_prober_id_by_name(prober_name)
+            prober_id = DatabaseInfluxDB.get_prober_id_by_name(prober_name)
             src_dst = SrcDst()
             src_dst.prober_id = prober_id
             src_dst.dst = dst
@@ -80,7 +80,7 @@ class DatabaseInfluxDB(Database):
         else:
             result = objects[0]
             pair_id = result.id
-        src_dst_pairs[search_kwargs] = pair_id
+        src_dst_pairs[search_tuple] = pair_id
         return pair_id
 
     def get_poll_counts_by_pair(self, prober_name, dst_ip) -> int:
