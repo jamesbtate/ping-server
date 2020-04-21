@@ -1,12 +1,12 @@
 FROM python:3.7-slim as builder
 
 RUN BUILD_DEPS='gcc libc-dev libmariadb-dev-compat' \
-    && apt update \
-    && apt install -y --no-install-recommends $BUILD_DEPS
+    && apt-get update \
+    && apt-get install -y --no-install-recommends $BUILD_DEPS
 
 WORKDIR /app
 COPY requirements.txt /app/requirements.txt
-RUN pip install --prefix /app/local -r requirements.txt
+RUN pip install --no-warn-script-location --prefix /app/local -r requirements.txt
 COPY . /app
 
 
@@ -14,8 +14,8 @@ COPY . /app
 FROM python:3.7-slim as base
 
 RUN RUN_DEPS='libmariadb3' \
-    && apt update \
-    && apt install -y --no-install-recommends $RUN_DEPS
+    && apt-get update \
+    && apt-get install -y --no-install-recommends $RUN_DEPS
 
 WORKDIR /app
 COPY --from=builder /app /app

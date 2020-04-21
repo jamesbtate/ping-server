@@ -1,7 +1,3 @@
 FROM ping:base
 
-WORKDIR /app
-
-COPY . /app
-
 CMD ["python", "probe.py", "-f"]

@@ -210,8 +210,9 @@ class DatabaseInfluxDB(Database):
         result_set = self.client.query(query, bind_params=params, epoch='s')
         points = list(result_set.get_points())
         if not points:
-            return datetime.datetime.fromtimestamp(0)
-        dt = datetime.datetime.fromtimestamp(points[0]['time'])
+            dt = datetime.datetime.min
+        else:
+            dt = datetime.datetime.fromtimestamp(points[0]['time'])
         return dt
 
     def read_records(self, prober_name, dst_ip, start_time, end_time) -> List:
