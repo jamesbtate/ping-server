@@ -2,14 +2,22 @@
 Misc functions
 """
 
+import configparser
 import argparse
 import logging
 import time
 import re
 
+
 def is_number(x):
     """ Returns true if the parameter is an integer or float. """
     return type(x) is float or type(x) is int
+
+
+def read_config(filename: str) -> configparser.ConfigParser:
+    parser = configparser.ConfigParser(allow_no_value=True)
+    parser.read(filename)
+    return parser
 
 
 def duration_string_to_seconds(duration):

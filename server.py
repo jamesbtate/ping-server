@@ -25,12 +25,6 @@ write_queue: Queue = None  # queue of messages that need to be recorded.
 clients: dict = {}  # all connected clients, keyed on client name.
 
 
-def read_config(filename: str) -> configparser.ConfigParser:
-    parser = configparser.ConfigParser(allow_no_value=True)
-    parser.read(filename)
-    return parser
-
-
 def handle_output_message(remote_addr: tuple, client_name: str, message: dict):
     global write_queue
     if 'id' not in message:
@@ -123,7 +117,7 @@ def main():
     logger = logging.getLogger('websockets.server')
     logger.setLevel(logging.ERROR)
     logger.addHandler(logging.StreamHandler())
-    config_parser = read_config(args.config_file)
+    config_parser = misc.read_config(args.config_file)
     log_format = '%(asctime)s %(levelname)s:%(module)s:%(funcName)s# ' \
                  + '%(message)s'
     if args.foreground:

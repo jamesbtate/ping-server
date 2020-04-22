@@ -13,14 +13,13 @@ import gc
 from pingweb.models import Prober, ProberForm
 
 from database_influxdb import DatabaseInfluxDB
-from server import read_config
 import graphing
 import config
 import misc
 
 
 from django.conf import settings
-params = read_config(settings.LEGACY_CONFIG_FILE)['server']
+params = misc.read_config(settings.LEGACY_CONFIG_FILE)['server']
 db = DatabaseInfluxDB(params)
 
 
