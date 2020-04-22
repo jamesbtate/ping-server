@@ -5,7 +5,6 @@ docker create --name ping_mariadb --restart always -h mariadb --network ping -p 
     -e MYSQL_DATABASE=ping \
     -e MYSQL_USER=ping \
     -e MYSQL_PASSWORD=ping \
-    -v $PWD/schema.sql:/docker-entrypoint-initdb.d/schema.sql \
     mariadb:10.3
 
 docker create --name ping_collector --restart always -h collector --network ping -p 8765:8765 ping:collector
