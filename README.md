@@ -47,7 +47,6 @@ A distributed application for running constant pings against hosts and logging t
 
 
 
-
 # Development Environment Setup
 
 ## Pre-requisites:
@@ -60,9 +59,22 @@ A distributed application for running constant pings against hosts and logging t
   - gcc
   - docker *or* podman
   - probably a bunch more things
+- Run a MySQL-comaptible database and InfluxDB.
+  - These can easily be containers even if the application is not containerized.
+  - Look in `docker_create.bash` to see example MariaDB and InfluxDB containers.
 - Make a virtuenenv:
   - `./make_venv.bash`
     - This script makes the venv, activates it, and installs the requirements.
+- Copy `config.default.py` to `config_local.py` and set values accordingly.
+- Copy `default.conf` to `dev.py` and set values accordingly.
+- Apply Django migrations:
+  - `./manage.py migrate`
+- Run collector:
+  - `DJANGO_SETTINGS_MODULE=pingweb.settings_dev ./server.py -fdc dev_local.conf`
+- Run prober:
+  - `./probe.py -fdc dev.conf`
+- Run Django development webserver:
+  - `DJANGO_SETTINGS_MODULE=pingweb.settings_dev ./manage.py runserver 0.0.0.0:5001`
 
 ## Some old development environment execution instructions
 1. Create a database and user for the ping recorder.
