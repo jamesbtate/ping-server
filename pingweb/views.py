@@ -4,13 +4,14 @@ Django views for the pingweb application
 """
 
 from django.shortcuts import render, redirect
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, QueryDict
 import json
 import time
 import os
 import gc
 
 from pingweb.models import Prober, ProberForm
+from pingweb.forms import GraphOptionsForm
 
 from database_influxdb import DatabaseInfluxDB
 import graphing
@@ -48,7 +49,13 @@ def index(request):
 
 def graph_page(request, pair_id):
     pair = db.get_src_dst_by_id(pair_id)
-    start_time, stop_time = misc.get_time_extents(request.GET)
+    graph_options_form = GraphOptionsForm(request.GET)
+    if graph_options_form.is_valid():
+        start_time, stop_time = graph_options_form.get_time_extents()
+    else:
+        start_time, stop_time = misc.get_time_extents_from_params('1h')
+    graph_options_form.set_datetime_fields(start_time, stop_time)
+    graph_options_form.set_field_defaults()
     t = time.time()
     records = db.get_poll_data_by_id(pair_id, start=start_time, end=stop_time,
                                      convert_to_datetime=True)
@@ -68,7 +75,8 @@ def graph_page(request, pair_id):
         'minimum': statistics['minimum'] * 1000,
         'maximum': statistics['maximum'] * 1000,
         'average': statistics['mean'] * 1000,
-        'success_rate': success_rate
+        'success_rate': success_rate,
+        'graph_options_form': graph_options_form,
     }
     # flask: return render_template("graph.html", **data)
     return render(request, 'graph.html', data)

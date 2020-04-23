@@ -2,6 +2,7 @@
 Misc functions
 """
 
+from typing import Tuple
 import configparser
 import argparse
 import logging
@@ -9,7 +10,7 @@ import time
 import re
 
 
-def is_number(x):
+def is_number(x) -> bool:
     """ Returns true if the parameter is an integer or float. """
     return type(x) is float or type(x) is int
 
@@ -20,7 +21,7 @@ def read_config(filename: str) -> configparser.ConfigParser:
     return parser
 
 
-def duration_string_to_seconds(duration):
+def duration_string_to_seconds(duration: str) -> int:
     """ Calculates the number of seconds in a duration string.
 
         Argument is a shorthand duration string e.g. 1h or 2d or 57m
@@ -56,7 +57,7 @@ def duration_string_to_seconds(duration):
     return seconds
 
 
-def get_time_extents(args, default=3601):
+def get_time_extents(args, default=3601) -> Tuple[int, int]:
     """ Return start and stop UNIX time integers from a request arguments.
 
         The argument 'args' is a werkzeug MultiDict containing HTTP query
@@ -74,6 +75,23 @@ def get_time_extents(args, default=3601):
     start_time = int(args.get('start_time', default=0))
     stop_time = int(args.get('stop_time', default=0))
     window = args.get('window', default=None)
+    return get_time_extents_from_params(window, start_time, stop_time, default)
+
+
+def get_time_extents_from_params(window: str, start_time: int = None, stop_time: int = None, default=3601)\
+        -> Tuple[int, int]:
+    """ Return start and stop UNIX time integers from a request arguments.
+
+    If suitable dictionary keys are not found, a time window ending now
+    is returned. The kwarg 'default' specifies how many seconds long
+    that time window is.
+
+    :param window: a duration shorthand string acceptable to duration_string_to_seconds() or blank/None
+    :param start_time: UNIX timestamp integer or None
+    :param stop_time: UNIX timestamp integer or None
+    :param default: default time window size in seconds
+    :return: (start, stop) which are integers (UNIX timestamps)
+    """
     if window:
         stop_time = int(time.time())
         try:
@@ -92,7 +110,7 @@ def get_time_extents(args, default=3601):
     return start_time, stop_time
 
 
-def make_generic_parser(description):
+def make_generic_parser(description) -> argparse.ArgumentParser:
     """ Make and return an argparse ArgumentParser with common options """
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument('-c', '--config-file', default='ping.conf',

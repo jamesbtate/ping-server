@@ -2,48 +2,83 @@
 {% load humanize %}
 {% block title %}Graph {{ prober_name }} to {{ dst }}{% endblock %}
 {% block body %}
-<body>
-<h2>{{ prober_name }} to {{ dst }}</h2>
-<h3>Statistics</h3>
-<p> Data points: {{ statistics.echos }}
-    Successes: {{ statistics.successes }}
-    Timeouts: {{ statistics.timeouts }}
-    Success Rate:
-    {% if statistics.echos > 0 %}
-        {{ success_rate|floatformat:2 }}
-    {% else %}
-        0.0%
-    {% endif %}
-</p>
-<p>
-    Minimum: {{ minimum|floatformat:1 }}ms
-    Maximum: {{ maximum|floatformat:1 }}ms
-    Average (mean): {{ average|floatformat:1 }}ms
-</p>
-<h3>Graph</h3>
-<img src='/graph_image/{{ pair_id }}?start_time={{ start_time }}&stop_time={{ stop_time }}' />
-<p>
-    <a href="/graph/{{ pair_id }}?start_time={{ start_time }}&stop_time={{ stop_time }}">Permalink to this graph</a>
-    <a href="/graph/{{ pair_id }}?window=10m">Last 10 Minutes</a>
-    <a href="/graph/{{ pair_id }}?window=1h">Last Hour</a>
-    <a href="/graph/{{ pair_id }}?window=8h">Last 8 Hours</a>
-    <a href="/graph/{{ pair_id }}?window=1d">Last Day</a>
-    <a href="/graph/{{ pair_id }}?window=1w">Last Week</a>
-</p>
-<p>
-    <label for="start">Start Time:</label>
-    <input type="text" name="start" id="start" data-initial="{{ start_time }}" class="timepicker"/>
-    <input type="hidden" name="start_alt" id="start_alt" />
-    <label for="stop">Stop Time:</label>
-    <input type="text" name="stop" id="stop" data-initial="{{ stop_time }}" class="timepicker"/>
-    <input type="hidden" name="stop_alt" id="stop_alt" />
-    <input type="submit" value="Go" id="go"/>
-</p>
-<h3>Debug</h3>
-<p>Data retrieval time: {{ retrieve_time|floatformat:3 }} seconds</p>
+    <h2>{{ prober_name }} to {{ dst }}</h2>
+    <h3>Statistics</h3>
+    <p> Data points: {{ statistics.echos }}
+        Successes: {{ statistics.successes }}
+        Timeouts: {{ statistics.timeouts }}
+        Success Rate:
+        {% if statistics.echos > 0 %}
+            {{ success_rate|floatformat:2 }}
+        {% else %}
+            0.0%
+        {% endif %}
+    </p>
+    <p>
+        Minimum: {{ minimum|floatformat:1 }}ms
+        Maximum: {{ maximum|floatformat:1 }}ms
+        Average (mean): {{ average|floatformat:1 }}ms
+    </p>
+    <h3>Graph</h3>
+    <img src='/graph_image/{{ pair_id }}?start_time={{ start_time }}&stop_time={{ stop_time }}' />
+    <p>
+        <a href="/graph/{{ pair_id }}?start_time={{ start_time }}&stop_time={{ stop_time }}">Permalink to this graph</a>
+        <a href="/graph/{{ pair_id }}?window=10m">Last 10 Minutes</a>
+        <a href="/graph/{{ pair_id }}?window=1h">Last Hour</a>
+        <a href="/graph/{{ pair_id }}?window=8h">Last 8 Hours</a>
+        <a href="/graph/{{ pair_id }}?window=1d">Last Day</a>
+        <a href="/graph/{{ pair_id }}?window=1w">Last Week</a>
+    </p>
 
-{# <p>Graph draw time: {{ "%0.3f" % draw_time }} seconds</p> #}
+    <h3>Graph Options</h3>
+    <form method="GET">
+        {{ graph_options_form.non_field_errors }}
+        <p id="graph_options_time">
+            {{ graph_options_form.start_time.errors }}
+            <label for="{{ graph_options_form.start_time.id_for_label }}">Start Time:</label>
+            {{ graph_options_form.start_time }}
 
-{# <pre> {% filter force_escape %} {% debug %} {% endfilter %} </pre> #}
+            {{ graph_options_form.stop_time.errors }}
+            <label for="{{ graph_options_form.stop_time.id_for_label }}">Stop Time:</label>
+            {{ graph_options_form.stop_time }}
+        </p>
+        <p id="graph_options_checkboxes">
+            {{ graph_options_form.reduce.errors }}
+            <input type="hidden" name="reduce" value="">
+            <label for="{{ graph_options_form.reduce.id_for_label }}">Reduce Data:</label>
+            {{ graph_options_form.reduce }}
+            {{ graph_options_form.points.errors }}
+            <input type="hidden" name="points" value="">
+            <label for="{{ graph_options_form.points.id_for_label }}">Show Points:</label>
+            {{ graph_options_form.points }}
+            {{ graph_options_form.timeouts.errors }}
+            <input type="hidden" name="timeouts" value="">
+            <label for="{{ graph_options_form.timeouts.id_for_label }}">Show Timeouts:</label>
+            {{ graph_options_form.timeouts }}
+            {{ graph_options_form.success_rate.errors }}
+            <input type="hidden" name="success_rate" value="">
+            <label for="{{ graph_options_form.success_rate.id_for_label }}">Show Success Rate:</label>
+            {{ graph_options_form.success_rate }}
+        </p>
+        <p>
+            <input type="submit" value="Go">
+        </p>
+    </form>
+    <!--<p>
 
+        <input type="text" name="start" id="start" data-initial="{{ start_time }}" class="timepicker"/>
+        <input type="hidden" name="start_alt" id="start_alt" />
+
+        <input type="text" name="stop" id="stop" data-initial="{{ stop_time }}" class="timepicker"/>
+        <input type="hidden" name="stop_alt" id="stop_alt" />
+        <input type="submit" value="Go" id="go"/>
+    </p>-->
+
+    <h3>Debug</h3>
+    <p>Data retrieval time: {{ retrieve_time|floatformat:3 }} seconds</p>
+    {# <p>Graph draw time: {{ "%0.3f" % draw_time }} seconds</p> #}
+    {# <pre> {% filter force_escape %} {% debug %} {% endfilter %} </pre> #}
+    <p>start_time: {{ start_time }}</p>
+    <p>stop_time: {{ stop_time }}</p>
+    <p>form data: {{  graph_options_form.data }}</p>
 {% endblock %}
