@@ -3,7 +3,7 @@
 Django views for the pingweb application
 """
 
-from django.shortcuts import render, redirect, reverse
+from django.shortcuts import render, redirect
 from django.http import HttpRequest, HttpResponse, QueryDict
 from urllib.parse import urlencode
 import json
@@ -91,15 +91,13 @@ def graph_image(request, pair_id):
     if graph_options_form.is_valid():
         start_time, stop_time = graph_options_form.get_time_extents()
     else:
-        start_time, stop_time = misc.get_time_extents_from_params('1h')
+        data = {f: e.get_json_data() for f, e in graph_options_form.errors.items()}
+        return HttpResponse(json.dumps(data))
     records = db.get_poll_data_by_id(pair_id, start=start_time, end=stop_time,
                                      convert_to_datetime=True)
     t = time.time()
     kwargs = {}
-    if request.GET.get('success_rate'):
-        kwargs['reduce'] = 60
-        kwargs['success_rate'] = True
-    bytes_io = graphing.make_graph_png(pair, records, **kwargs)
+    bytes_io = graphing.make_graph_png(pair, records, **graph_options_form.cleaned_data)
     bytes_io.seek(0)
     # draw_time = time.time() - t
     # flask: return send_file(bytes_io, mimetype='image/png')

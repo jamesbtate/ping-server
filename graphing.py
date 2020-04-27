@@ -12,6 +12,9 @@ import base64
 import io
 
 
+DEFAULT_BUCKET_SIZE = 60  # default size of "reduce" buckets in seconds
+
+
 locator = matplotlib.dates.AutoDateLocator()
 formatter = matplotlib.dates.ConciseDateFormatter(locator)
 
@@ -85,6 +88,8 @@ def reduce_data_points(records: List[Dict], bucket_duration: int) -> List[Dict]:
         'minimum': 12,
     }
     """
+    if not type(bucket_duration) is int:
+        bucket_duration = DEFAULT_BUCKET_SIZE
     buckets = []
     start_epoch = round_to_int(records[0]['time'].timestamp(), bucket_duration)
     count = 0
@@ -96,6 +101,7 @@ def reduce_data_points(records: List[Dict], bucket_duration: int) -> List[Dict]:
         if record['time'].timestamp() >= start_epoch + bucket_duration:
             # record is in next bucket. tally totals for this bucket and add to output list
             if count > 0:
+                average = 0 if successes == 0 else total / successes * 1000
                 bucket = {
                     'start_epoch': start_epoch,
                     'time': datetime.datetime.fromtimestamp(start_epoch),
@@ -103,7 +109,7 @@ def reduce_data_points(records: List[Dict], bucket_duration: int) -> List[Dict]:
                     'successes': successes,
                     'timeouts': count - successes,
                     'success_rate': successes / count,
-                    'average': total / successes * 1000,
+                    'average': average,
                     'maximum': maximum * 1000,
                     'minimum': minimum * 1000
                 }
@@ -124,12 +130,26 @@ def reduce_data_points(records: List[Dict], bucket_duration: int) -> List[Dict]:
                 minimum = record['latency']
             if record['latency'] > maximum:
                 maximum = record['latency']
+    if count > 0:
+        average = 0 if successes == 0 else total / successes * 1000
+        bucket = {
+            'start_epoch': start_epoch,
+            'time': datetime.datetime.fromtimestamp(start_epoch),
+            'count': count,
+            'successes': successes,
+            'timeouts': count - successes,
+            'success_rate': successes / count,
+            'average': average,
+            'maximum': maximum * 1000,
+            'minimum': minimum * 1000
+        }
+        buckets.append(bucket)
     return buckets
 
 
 def make_graph_figure(pair, records, points=True, timeouts=True,
                       reduce=None, success_rate=False, minimum=False,
-                      average=False, maximum=False):
+                      average=False, maximum=False, **kwargs):
     """ Make a graph for the given pair and list of records
 
     pair - dict - record from DB containing attributes of the src/dst pair.
@@ -141,6 +161,7 @@ def make_graph_figure(pair, records, points=True, timeouts=True,
     minimum - T/F - draw a line for the minimum response time in each bucket.
     maximum - T/F - draw a line for the maximum response time in each bucket.
     average - T/F - draw a line for the average response time in each bucket.
+    **kwargs - Other kwargs are ignored. They are not passed anywhere else.
 
     The various T/F kwargs after the reduce kwarg are ignored if reduce is false-y.
 
@@ -168,6 +189,8 @@ def make_graph_figure(pair, records, points=True, timeouts=True,
             axis2.set_ylabel("Success Rate")
             axis2.plot(bucket_times, success_rates, linestyle='-',
                        color='tab:green', marker='.', markersize=1)
+
+            axis2.set_ybound(0,1.01)
     plt.tight_layout()  # re-calc position of axes, titles etc
     return figure
 
@@ -177,10 +200,9 @@ def _cleanup():
     plt.close()
 
 
-def make_graph_base64_png(pair, records):
-    figure = make_graph_figure(pair, records)
-    bytes_io = io.BytesIO()
-    figure.savefig(bytes_io, format="png")
+def make_graph_base64_png(pair, records, **kwargs):
+    """ Wrapper function for make_graph_png() to get an HTML-embeddable base64 serialization of the graph. """
+    bytes_io = make_graph_png(pair, records, **kwargs)
     b64_figure = base64.b64encode(bytes_io.getbuffer()).decode('utf-8')
     output = str.format("data:image/png;charset=utf-8;base64, {}", b64_figure)
     # clear the figure and close pyplot to prevent memory leaks
@@ -189,6 +211,7 @@ def make_graph_base64_png(pair, records):
 
 
 def make_graph_png(pair, records, **kwargs):
+    """ Wrapper function for make_graph_figure() to make a graph and save as a PNG to a BytesIO stream. """
     figure = make_graph_figure(pair, records, **kwargs)
     bytes_io = io.BytesIO()
     figure.savefig(bytes_io, format="png")
