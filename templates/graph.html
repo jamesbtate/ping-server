@@ -20,7 +20,7 @@
         Average (mean): {{ average|floatformat:1 }}ms
     </p>
     <h3>Graph</h3>
-    <img src='/graph_image/{{ pair_id }}?start_time={{ start_time }}&stop_time={{ stop_time }}' />
+    <img src='{{ graph_image_url }}' />
     <p>
         <a href="/graph/{{ pair_id }}?start_time={{ start_time }}&stop_time={{ stop_time }}">Permalink to this graph</a>
         <a href="/graph/{{ pair_id }}?window=10m">Last 10 Minutes</a>

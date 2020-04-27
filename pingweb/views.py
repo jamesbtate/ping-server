@@ -3,8 +3,9 @@
 Django views for the pingweb application
 """
 
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, reverse
 from django.http import HttpRequest, HttpResponse, QueryDict
+from urllib.parse import urlencode
 import json
 import time
 import os
@@ -56,6 +57,7 @@ def graph_page(request, pair_id):
         start_time, stop_time = misc.get_time_extents_from_params('1h')
     graph_options_form.set_datetime_fields(start_time, stop_time)
     graph_options_form.set_field_defaults()
+    graph_image_url = '/graph_image/' + str(pair_id) + '?' + urlencode(request.GET.dict())
     t = time.time()
     records = db.get_poll_data_by_id(pair_id, start=start_time, end=stop_time,
                                      convert_to_datetime=True)
@@ -77,6 +79,7 @@ def graph_page(request, pair_id):
         'average': statistics['mean'] * 1000,
         'success_rate': success_rate,
         'graph_options_form': graph_options_form,
+        'graph_image_url': graph_image_url,
     }
     # flask: return render_template("graph.html", **data)
     return render(request, 'graph.html', data)
@@ -84,7 +87,11 @@ def graph_page(request, pair_id):
 
 def graph_image(request, pair_id):
     pair = db.get_src_dst_by_id(pair_id)
-    start_time, stop_time = misc.get_time_extents(request.GET)
+    graph_options_form = GraphOptionsForm(request.GET)
+    if graph_options_form.is_valid():
+        start_time, stop_time = graph_options_form.get_time_extents()
+    else:
+        start_time, stop_time = misc.get_time_extents_from_params('1h')
     records = db.get_poll_data_by_id(pair_id, start=start_time, end=stop_time,
                                      convert_to_datetime=True)
     t = time.time()
