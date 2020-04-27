@@ -14,23 +14,27 @@ function goClicked() {
 }
 
 $(document).ready(function() {
-    startPicker = $('.timepicker#id_start_time').datetimepicker({
+    $('.timepicker').datetimepicker({
+        dateFormat: "yy-mm-dd",
+        timeFormat: "HH:mm:ss",
+    });
+    /*startPicker = $('.timepicker#id_start_time').datetimepicker({
         dateFormat: "yy-mm-dd",
         timeFormat: "HH:mm:ss",
     });
     stopPicker = $('.timepicker#id_stop_time').datetimepicker({
         dateFormat: "yy-mm-dd",
         timeFormat: "HH:mm:ss",
-        /*altFormat: "@",
-        altField: "input#stop_alt",
-        altFieldTimeOnly: false,
-        altTimeFormat: "",
-	    altSeparator: ""*/
+        // altFormat: "@",
+        // altField: "input#stop_alt",
+        // altFieldTimeOnly: false,
+        // altTimeFormat: "",
+	    // altSeparator: ""
     });
     if (startPicker.length) {
         // startPicker.datetimepicker('setDate', (new Date($('.timepicker#id_start_time').data().initial * 1000)));
         // stopPicker.datetimepicker('setDate', (new Date($('.timepicker#id_stop_time').data().initial * 1000)));
-    }
+    }*/
 
     $('input#go').click(goClicked);
 });
