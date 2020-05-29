@@ -4,7 +4,7 @@ Functions for generating graphs of the ping data
 
 from database_influxdb import TIMEOUT_VALUE
 import matplotlib.dates
-matplotlib.use('agg')  # this does nothing if matplotlib.pyplot is imported
+matplotlib.use('agg')  # this does nothing if matplotlib.pyplot is imported first
 import matplotlib.pyplot as plt
 from typing import Tuple, List, Dict
 import datetime
@@ -179,7 +179,7 @@ def make_graph_figure(pair, records, points=True, timeouts=True,
             # multiply by 1000 for millis
             success_values.append(record['latency'] * 1000)
     figure, axes = ping_figure(success_times, success_values, timeout_times,
-                               label=title, x_label="Time", y_label="Milliseconds")
+                               label=title, x_label="Time (UTC)", y_label="Milliseconds")
     if reduce:
         buckets = reduce_data_points(records, reduce)
         bucket_times = [_['time'] for _ in buckets]
