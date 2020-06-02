@@ -12,3 +12,4 @@ data.*
 *.sqlite3
 *.env
 !default.env
+old/
