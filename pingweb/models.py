@@ -7,6 +7,7 @@
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 from django.forms import ModelForm, TextInput
+from enum import IntEnum
 
 
 class Prober(models.Model):
@@ -50,6 +51,32 @@ class SrcDst(models.Model):
 
     class Meta:
         db_table = 'src_dst'
+
+
+class ServerSetting(models.Model):
+    """ Settings for the collector daemon and the webserver. """
+    id = models.BigAutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    value = models.CharField(max_length=255)
+
+
+class CollectorMessageType(IntEnum):
+    ReloadSettings = 1
+    NotifyProbers = 2
+
+    @classmethod
+    def choices(cls):
+        return [(key.value, key.name) for key in cls]
+
+
+class CollectorMessage(models.Model):
+    """ Messages from the webserver to the collector """
+    id = models.BigAutoField(primary_key=True)
+    message = models.IntegerField(choices=CollectorMessageType.choices())
+    posted = models.DateTimeField(auto_now_add=True)
+
+    def type(self):
+        return CollectorMessageType(self.message)
 
 
 class Version(models.Model):
