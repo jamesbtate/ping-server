@@ -31,12 +31,10 @@ A distributed application for running constant pings against hosts and logging t
    1. Modify /etc/subuid and /etc/subgid
    2. Modify /etc/docker/daemon.json to remap the users. This has implications for other containers on the system.
 0. Create config files.
-   1. Copy `default.conf` to `ping.conf`
-   1. Copy `config.default.py` to `config.py`
+   1. Copy `default.env` to `prod.env`
    2. Modify values as necessary. If you change database stuff, you need to re-run `docker_build_X.bash` too.
-0. Add prober to database
-   1. `mysql -h 127.0.0.1 -P 13306 -u ping -pping ping`
-   1. ```INSERT INTO prober (`name`,`key`,`added`) VALUES ('prober1', 'prober1', NOW());```
+   3. No .env file is automatically used by the containers yet. Specify the .env file or specific variables
+      manually as necessary.
 8. Build docker images. This will take a minute or two. A couple things need to compile.
    1. `./docker_build_new.bash`   # This requires docker 17.05+
    (does not work on RHEL7-based distributions. Use podman instead.)
@@ -44,6 +42,9 @@ A distributed application for running constant pings against hosts and logging t
    1. `./docker_create.bash`
 7. Start containers
    1. `./docker_start.bash`
+0. Add prober to database
+   1. Go to the web interface, navigate to Configure -> Probers and add a prober.
+   2. http://my-docker-host:5000
 
 
 
@@ -65,18 +66,20 @@ A distributed application for running constant pings against hosts and logging t
 - Make a virtuenenv:
   - `./make_venv.bash`
     - This script makes the venv, activates it, and installs the requirements.
-- Copy `config.default.py` to `config_local.py` and set values accordingly.
-- Copy `default.conf` to `dev.py` and set values accordingly.
+- Copy `default.env` to `dev.env` and set values accordingly.
+- Export variables in environment file (bash commands below):
+  - `set -a` - This enables "allexport" which automatically exports variable assignments.
+  - `source dev.env`
 - Apply Django migrations:
   - `./manage.py migrate`
 - Run collector:
-  - `DJANGO_SETTINGS_MODULE=pingweb.settings_dev ./server.py -fdc dev_local.conf`
+  - `./server.py -fdc dev_local.conf`
 - Run prober:
   - `./probe.py -fdc dev.conf`
 - Run Django development webserver:
-  - `DJANGO_SETTINGS_MODULE=pingweb.settings_dev ./manage.py runserver 0.0.0.0:5001`
+  - `./manage.py runserver 0.0.0.0:5001`
 
-## Some old development environment execution instructions
+## Some old development environment execution instructions. You shouldn't have to do this stuff anymore.
 1. Create a database and user for the ping recorder.
     ```
     create database ping;
