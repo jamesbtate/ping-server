@@ -16,6 +16,7 @@ from typing import List, Iterable
 
 from database import Database
 from pingweb.models import SrcDst, Prober
+import env
 
 
 TIMEOUT_VALUE = 127.0  # magic value indicating probe timed out
@@ -28,20 +29,25 @@ class_cache = TTLCache(maxsize=8192, ttl=60)
 
 
 class DatabaseInfluxDB(Database):
-    def __init__(self, db_params):
+    def __init__(self, db_params=None):
         self.db_params = db_params
         self.client = None
         super().__init__()
-        self.client = InfluxDBClient(db_params['influxdb_host'],
-                                     db_params['influxdb_port'],
-                                     db_params['influxdb_user'],
-                                     db_params['influxdb_pass'],
-                                     db_params['influxdb_db'])
-        logging.info("Connected to InfluxDB @ %s", db_params['influxdb_host'])
+        self.cache = TTLCache(maxsize=1048576, ttl=60, getsizeof=len)
+
+    def _connect(self):
+        """ Connect to the InfluxDB server. Load params if not specified. """
+        if not self.db_params:
+            self.db_params = env.get_influxdb_params()
+        self.client = InfluxDBClient(self.db_params['INFLUXDB_HOST'],
+                                     self.db_params['INFLUXDB_PORT'],
+                                     self.db_params['INFLUXDB_USER'],
+                                     self.db_params['INFLUXDB_PASS'],
+                                     self.db_params['INFLUXDB_DB'])
+        logging.info("Connected to InfluxDB @ %s", self.db_params['INFLUXDB_HOST'])
         # this does nothing if the DB already exists. I think.
         self.client.create_database('ping')
         self.client.alter_retention_policy('autogen', duration='4w', shard_duration='1d')
-        self.cache = TTLCache(maxsize=1048576, ttl=60, getsizeof=len)
 
     @staticmethod
     def get_prober_id_by_name(prober_name: str) -> int:
@@ -83,6 +89,8 @@ class DatabaseInfluxDB(Database):
 
     def get_poll_counts_by_pair(self, prober_name, dst_ip) -> int:
         """ Return the number of polls for a specific pair. """
+        if not self.client:
+            self._connect()
         query = 'SELECT COUNT(latency) FROM "icmp-echo" WHERE ' + \
                 'prober_name=$prober_name AND dst_ip=$dst_ip'
         params = {
@@ -173,6 +181,8 @@ class DatabaseInfluxDB(Database):
 
     def record_poll_data(self, prober_name, dst_ip, send_time, receive_time) -> None:
         """ Record results of a single poll in the database. """
+        if not self.client:
+            self._connect()
         # do this to make sure there is a record created in the MySQL DB for this pair.
         pair_id = self.src_dst_id(prober_name, dst_ip)
         if receive_time is None:
@@ -198,6 +208,8 @@ class DatabaseInfluxDB(Database):
 
         Returns a datetime.datetime object.
         """
+        if not self.client:
+            self._connect()
         query = 'SELECT LAST(*) FROM "icmp-echo" WHERE ' + \
                 'prober_name=$prober_name AND dst_ip=$dst_ip'
         params = {
@@ -222,6 +234,8 @@ class DatabaseInfluxDB(Database):
             Sample return:
                 [{'1970-01-01T12:34:56}, 0.0123}, {...}, ...]
         """
+        if not self.client:
+            self._connect()
         start_time = str(int(start_time))
         end_time = str(int(end_time))
         query = 'SELECT "latency" FROM "icmp-echo" WHERE prober_name=$prober_name AND ' + \
