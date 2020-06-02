@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% load humanize %}
 {% block title %}Graph {{ prober_name }} to {{ dst }}{% endblock %}
+{% block errors %}{{ error }}{% endblock %}
 {% block body %}
     <h2>{{ prober_name }} to {{ dst }}</h2>
     <h3>Statistics</h3>

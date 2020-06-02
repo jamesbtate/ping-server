@@ -52,6 +52,10 @@ ul.subnavbar li a:hover {
     background-color: #b1b7ce;
 }
 
+div#errors {
+    background-color: indianred;
+}
+
 div#content {
     padding: 8px;
 }

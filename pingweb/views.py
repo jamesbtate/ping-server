@@ -35,20 +35,26 @@ def test(request):
 
 def index(request):
     pairs = db.get_src_dst_pairs()
-    for pair in pairs:
-        prober_name = pair.prober.name
-        dst = pair.dst
-        dt = db.last_poll_time_by_pair(prober_name, dst)
-        pair.mtime = dt.isoformat()
-        pair.polls = db.get_poll_counts_by_pair(prober_name, dst)
+    error = ''
+    try:
+        for pair in pairs:
+            prober_name = pair.prober.name
+            dst = pair.dst
+            dt = db.last_poll_time_by_pair(prober_name, dst)
+            pair.mtime = dt.isoformat()
+            pair.polls = db.get_poll_counts_by_pair(prober_name, dst)
+    except Exception as e:
+        error = 'Error talking to InfluxDB: ' + str(e)
     data = {
-        'src_dst_pairs': pairs
+        'src_dst_pairs': pairs,
+        'error': error
     }
     # flask: return render_template("index.html", **data)
     return render(request, 'index.html', data)
 
 
 def graph_page(request, pair_id):
+    error = ''
     pair = db.get_src_dst_by_id(pair_id)
     graph_options_form = GraphOptionsForm(request.GET)
     if graph_options_form.is_valid():
@@ -59,8 +65,12 @@ def graph_page(request, pair_id):
     graph_options_form.set_field_defaults()
     graph_image_url = '/graph_image/' + str(pair_id) + '?' + urlencode(request.GET.dict())
     t = time.time()
-    records = db.get_poll_data_by_id(pair_id, start=start_time, end=stop_time,
-                                     convert_to_datetime=True)
+    records = []
+    try:
+        records = db.get_poll_data_by_id(pair_id, start=start_time, end=stop_time,
+                                         convert_to_datetime=True)
+    except Exception as e:
+        error = 'Error talking to InfluxDB: ' + str(e)
     statistics = db.calculate_statistics(records)
     retrieve_time = time.time() - t
     success_rate = 0
@@ -80,6 +90,7 @@ def graph_page(request, pair_id):
         'success_rate': success_rate,
         'graph_options_form': graph_options_form,
         'graph_image_url': graph_image_url,
+        'error': error,
     }
     # flask: return render_template("graph.html", **data)
     return render(request, 'graph.html', data)
