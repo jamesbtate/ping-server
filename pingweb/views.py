@@ -8,7 +8,6 @@ from django.http import HttpRequest, HttpResponse, QueryDict
 from urllib.parse import urlencode
 import json
 import time
-import os
 import gc
 
 from pingweb.models import Prober, ProberForm
@@ -16,12 +15,11 @@ from pingweb.forms import GraphOptionsForm
 
 from database_influxdb import DatabaseInfluxDB
 import graphing
-import config
 import misc
+import env
 
 
-from django.conf import settings
-params = misc.read_config(settings.LEGACY_CONFIG_FILE)['server']
+params = env.get_influxdb_params()
 db = DatabaseInfluxDB(params)
 
 

@@ -1,18 +1,18 @@
 """
 Contains Thread subclass for writing to DB
 """
-import mysql.connector
 import threading
-import datetime
 import logging
 import queue
+import env
 from database_influxdb import DatabaseInfluxDB
 
 
 class Writer(threading.Thread):
-    def __init__(self, db_queue, db_params):
+    def __init__(self, db_queue):
         threading.Thread.__init__(self)
         self.db_queue = db_queue
+        db_params = env.get_influxdb_params()
         self.db = DatabaseInfluxDB(db_params)
         self.keep_going = True
 

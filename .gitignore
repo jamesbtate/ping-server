@@ -2,8 +2,6 @@ __pycache__/
 *.swp
 *.rrd
 nohup.out
-*.conf
-!default.conf
 .idea/
 *.log
 venv/
@@ -12,5 +10,5 @@ data/
 data.*
 *.sqlite
 *.sqlite3
-config.py
-config_local.py
+*.env
+!default.env
