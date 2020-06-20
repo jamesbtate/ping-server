@@ -124,7 +124,6 @@ def main():
         log_filename = config.get_setting_string('collector_log_file')
         logging.basicConfig(filename=log_filename, format=log_format,
                             level=args.log_level)
-    logging.debug("Read config file: %s", args.config_file)
     startup_checks(args)
     write_queue = queue.Queue()
     listen_ip = config.get_setting_string('ws_address')

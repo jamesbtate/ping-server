@@ -12,7 +12,6 @@ GNU GPL v2 license  -  see LICENSE
 from websockets.client import WebSocketClientProtocol as WebSocket
 from asyncio import Queue as AQueue
 from queue import Queue as TQueue
-import configparser
 import websockets
 import threading
 import argparse
@@ -30,6 +29,7 @@ import sys
 import os
 
 import misc
+import env
 
 # ICMP parameters
 ICMP_ECHOREPLY = 0  # Echo reply (per RFC792)
@@ -297,20 +297,19 @@ def _ping(hosts, output):
     p.run()
 
 
-async def maintain_collector_connection(config: configparser.SectionProxy,
-                                        results_queue: TQueue,
+async def maintain_collector_connection(results_queue: TQueue,
                                         unconfirmed_list: list):
     """ Coroutine to connect to collector and re-connect if connection fails.
 
     Starts the other coroutines and restarts them if they stop.
 
-    :param config: SectionProxy configuration section from config file
     :param results_queue: thread-safe queue of messages to transmit
     :param unconfirmed_list: a list of unconfirmed transmitted messages
     :return: None
     """
     global keep_going
-    url = config['ws_url']
+    url = env.get_env_string('PROBER_WS_URL')
+    name = env.get_env_string('PROBER_NAME')
     transmit_task = None
     receive_task = None
     requeue_task = None
@@ -319,7 +318,7 @@ async def maintain_collector_connection(config: configparser.SectionProxy,
         try:
             websocket = await websockets.connect(url)
             logging.debug("Connected to websocket %s", url)
-            auth_message = {'type': 'auth', 'name': config['name']}
+            auth_message = {'type': 'auth', 'name': name}
             await websocket.send(json.dumps(auth_message))
         except OSError as e:
             logging.error("Error connecting to websocket: %s", str(e))
@@ -467,27 +466,24 @@ def main():
     args = parse_args()
     log_format = '%(asctime)s %(levelname)s:%(module)s:%(funcName)s# ' \
                  + '%(message)s'
-    config_parser = configparser.ConfigParser(allow_no_value=True)
-    config_parser.read(args.config_file)
-    probe_config = config_parser['probe']
     if args.foreground:
         logging.basicConfig(format=log_format, level=args.log_level)
     else:
-        log_filename = probe_config['log_file']
+        log_filename = env.get_env_string('PROBER_LOG_FILE')
         logging.basicConfig(filename=log_filename, format=log_format,
                             level=args.log_level)
-    logging.debug("Read config file: %s", args.config_file)
     setup_signal_handler()
     results_queue = TQueue()
     unconfirmed_list = []
-    hosts = ping_targets_from_config(config_parser)
+    # hosts = ping_targets_from_config(config_parser)
+    hosts = []
     args = (hosts, results_queue)
     ping_thread = threading.Thread(target=_ping, args=args)
     logging.info("Starting ping thread")
     ping_thread.start()
     logging.info("Starting event loop")
     event_loop = asyncio.get_event_loop()
-    main_task = maintain_collector_connection(probe_config, results_queue, unconfirmed_list)
+    main_task = maintain_collector_connection(results_queue, unconfirmed_list)
     try:
         event_loop.run_until_complete(main_task)
     except KeyboardInterrupt:

@@ -3,7 +3,6 @@ Misc functions
 """
 
 from typing import Tuple
-import configparser
 import argparse
 import logging
 import time
@@ -13,12 +12,6 @@ import re
 def is_number(x) -> bool:
     """ Returns true if the parameter is an integer or float. """
     return type(x) is float or type(x) is int
-
-
-def read_config(filename: str) -> configparser.ConfigParser:
-    parser = configparser.ConfigParser(allow_no_value=True)
-    parser.read(filename)
-    return parser
 
 
 def duration_string_to_seconds(duration: str) -> int:
@@ -113,8 +106,6 @@ def get_time_extents_from_params(window: str, start_time: int = None, stop_time:
 def make_generic_parser(description) -> argparse.ArgumentParser:
     """ Make and return an argparse ArgumentParser with common options """
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-c', '--config-file', default='ping.conf',
-                        help="Path to config file. Default is ./ping.conf")
     parser.add_argument('-f', '--foreground', action='store_true',
                         help="Run in foreground and log to stderr.")
     parser.add_argument('-d', '--debug', dest='log_level',

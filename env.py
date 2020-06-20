@@ -20,6 +20,9 @@ DEFAULTS = {
     'INFLUXDB_USER': 'influxdb',
     'INFLUXDB_PASS': 'influxdb',
     'INFLUXDB_PORT': '8086',
+    'PROBER_WS_URL': 'ws://ping_collector:8765',
+    'PROBER_LOG_FILE': 'probe.log',
+    'PROBER_NAME': 'prober1',
 }
 
 
