@@ -5,32 +5,33 @@ A distributed application for running constant pings against hosts and logging t
 # Production Setup
 
 ## Simplified Setup
-1. `./docker_build_new.bash`
+1. `./initial_setup.bash` or do the next few steps manually.
+2. `./docker_build_new.bash`
    1. Above command uses multi-stage builds. It requires docker 17.something.
    2. Or use this command with an older docker version. It uses the individual Dockerfile-*thing* files: `./docker_build_old.bash`
-1. `./docker_create.bash`
-1. `./docker_start.bash`
+3. `./docker_create.bash`
+4. `./docker_start.bash`
 
 ## Simplified Cleanup
 1. `./docker_rm.bash`   # This kills the containers if they are running.
 1. `./docker_image_rm.bash`   # This deletes the images.
 
 ## Setup Details
-0. `./initial_setup.bash` or do the next few steps manually.
-1. Make some directories:
+1. `./initial_setup.bash` or do the next few steps manually.
+2. Make some directories:
    1. `mkdir /opt/ping`
    2. `mkdir /opt/ping/influxdb`
    2. `mkdir /opt/ping/mariadb`
-2. Create docker network
+3. Create docker network
    1. `docker network create ping`
-3. Create ping user
+4. Create ping user
    1. `useradd -d /opt/ping ping`
-4. Directory permissions
+5. Directory permissions
    1. `chown -R ping:ping /opt/ping`
-5. Setup user/group mapping. Skipping this for now and just running as root.
+6. Setup user/group mapping. Skipping this for now and just running as root.
    1. Modify /etc/subuid and /etc/subgid
    2. Modify /etc/docker/daemon.json to remap the users. This has implications for other containers on the system.
-0. Create config files.
+7. Create config files.
    1. Copy `default.env` to `prod.env`
    2. Modify values as necessary. If you change database stuff, you need to re-run `docker_build_X.bash` too.
    3. No .env file is automatically used by the containers yet. Specify the .env file or specific variables
