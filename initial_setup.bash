@@ -1,5 +1,4 @@
 #!/bin/bash
-mkdir /opt/ping
-mkdir /opt/ping/influxdb
-mkdir /opt/ping/mariadb
+mkdir -p /opt/ping/influxdb
+mkdir -p /opt/ping/mariadb
 docker network create ping
