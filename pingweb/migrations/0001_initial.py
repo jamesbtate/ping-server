@@ -22,7 +22,6 @@ class Migration(migrations.Migration):
             ],
             options={
                 'db_table': 'prober',
-                'managed': False,
             },
         ),
         migrations.CreateModel(
@@ -38,7 +37,6 @@ class Migration(migrations.Migration):
             ],
             options={
                 'db_table': 'prober_target',
-                'managed': False,
             },
         ),
         migrations.CreateModel(
@@ -49,7 +47,6 @@ class Migration(migrations.Migration):
             ],
             options={
                 'db_table': 'src_dst',
-                'managed': False,
             },
         ),
         migrations.CreateModel(
@@ -59,7 +56,6 @@ class Migration(migrations.Migration):
             ],
             options={
                 'db_table': 'version',
-                'managed': False,
             },
         ),
     ]
