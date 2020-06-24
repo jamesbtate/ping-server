@@ -32,16 +32,33 @@ class ProberForm(ModelForm):
 
 class ProberTarget(models.Model):
     id = models.BigAutoField(primary_key=True)
-    prober = models.ForeignKey(Prober, models.CASCADE)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
-    ip = models.PositiveIntegerField()
+    ip = models.GenericIPAddressField(protocol='IPv4', verbose_name="IP Address")
     type = models.CharField(max_length=4)
     port = models.PositiveIntegerField(blank=True, null=True)
-    added = models.DateTimeField()
+    added = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         db_table = 'prober_target'
+
+
+class TargetForm(ModelForm):
+    class Meta:
+        model = ProberTarget
+        fields = ['name', 'description', 'ip']
+        widgets = {
+            'description': TextInput(attrs={'size': 42}),
+        }
+
+
+class ProbeGroup(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, null=True)
+    probers = models.ManyToManyField(Prober)
+    targets = models.ManyToManyField(ProberTarget)
+    added = models.DateTimeField(auto_now_add=True)
 
 
 class SrcDst(models.Model):

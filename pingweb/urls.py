@@ -29,4 +29,6 @@ urlpatterns = [
     path('cache_info/get_poll_data', views.cache_info_get_poll_data),
     path('configure', views.configure),
     path('configure/prober', views.configure_prober),
+    path('configure/target', views.configure_target),
+    path('configure/probe_group', views.configure_probe_group),
 ]

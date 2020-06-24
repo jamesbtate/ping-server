@@ -10,7 +10,7 @@ import json
 import time
 import gc
 
-from pingweb.models import Prober, ProberForm
+from pingweb.models import *
 from pingweb.forms import GraphOptionsForm
 
 from database_influxdb import DatabaseInfluxDB
@@ -149,3 +149,29 @@ def configure_prober(request: HttpRequest):
         form = ProberForm()
     data = {'probers': probers, 'form': form}
     return render(request, 'configure_prober.html', data)
+
+
+def configure_target(request: HttpRequest):
+    targets = ProberTarget.objects.all()
+    if request.method == 'POST':
+        form = TargetForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect(request.path_info)
+    else:
+        form = TargetForm()
+    data = {'targets': targets, 'form': form}
+    return render(request, 'configure_target.html', data)
+
+
+def configure_probe_group(request: HttpRequest):
+    targets = ProberTarget.objects.all()
+    if request.method == 'POST':
+        form = TargetForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect(request.path_info)
+    else:
+        form = TargetForm()
+    data = {'targets': targets, 'form': form}
+    return render(request, 'configure_target.html', data)
