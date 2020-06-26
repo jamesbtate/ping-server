@@ -28,7 +28,10 @@ urlpatterns = [
     path('gc', views.garbage_collect),
     path('cache_info/get_poll_data', views.cache_info_get_poll_data),
     path('configure', views.configure),
-    path('configure/prober', views.configure_prober),
-    path('configure/target', views.configure_target),
-    path('configure/probe_group', views.configure_probe_group),
+    path('configure/prober', views.list_prober),
+    path('configure/prober/<int:id>', views.edit_prober, name='edit_prober'),
+    path('configure/target', views.list_target),
+    path('configure/target/<int:id>', views.edit_target, name='edit_target'),
+    path('configure/probe_group', views.list_probe_group),
+    path('configure/probe_group/<int:id>', views.edit_probe_group, name='edit_probe_group'),
 ]

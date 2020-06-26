@@ -51,7 +51,7 @@ def index(request):
     return render(request, 'index.html', data)
 
 
-def graph_page(request, pair_id):
+def graph_page(request, pair_id: int):
     error = ''
     pair = db.get_src_dst_by_id(pair_id)
     graph_options_form = GraphOptionsForm(request.GET)
@@ -94,7 +94,7 @@ def graph_page(request, pair_id):
     return render(request, 'graph.html', data)
 
 
-def graph_image(request, pair_id):
+def graph_image(request, pair_id: int):
     pair = db.get_src_dst_by_id(pair_id)
     graph_options_form = GraphOptionsForm(request.GET)
     if graph_options_form.is_valid():
@@ -138,7 +138,7 @@ def configure(request):
     return redirect('/configure/prober')
 
 
-def configure_prober(request: HttpRequest):
+def list_prober(request: HttpRequest):
     probers = Prober.objects.all()
     if request.method == 'POST':
         form = ProberForm(request.POST)
@@ -148,10 +148,22 @@ def configure_prober(request: HttpRequest):
     else:
         form = ProberForm()
     data = {'probers': probers, 'form': form}
-    return render(request, 'configure_prober.html', data)
+    return render(request, 'list_prober.html', data)
+
+def edit_prober(request: HttpRequest, id: int):
+    prober = Prober.objects.get(id=id)
+    if request.method == 'POST':
+        form = ProberForm(request.POST, instance=prober)
+        if form.is_valid():
+            form.save()
+            return redirect(request.path_info)
+    else:
+        form = ProberForm(instance=prober)
+    data = {'prober': prober, 'form': form}
+    return render(request, 'edit_prober.html', data)
 
 
-def configure_target(request: HttpRequest):
+def list_target(request: HttpRequest):
     targets = ProberTarget.objects.all()
     if request.method == 'POST':
         form = TargetForm(request.POST)
@@ -161,17 +173,43 @@ def configure_target(request: HttpRequest):
     else:
         form = TargetForm()
     data = {'targets': targets, 'form': form}
-    return render(request, 'configure_target.html', data)
+    return render(request, 'list_target.html', data)
 
 
-def configure_probe_group(request: HttpRequest):
-    targets = ProberTarget.objects.all()
+def edit_target(request: HttpRequest, id: int):
+    target = ProberTarget.objects.get(id=id)
     if request.method == 'POST':
-        form = TargetForm(request.POST)
+        form = TargetForm(request.POST, instance=target)
         if form.is_valid():
             form.save()
             return redirect(request.path_info)
     else:
-        form = TargetForm()
-    data = {'targets': targets, 'form': form}
-    return render(request, 'configure_target.html', data)
+        form = TargetForm(instance=target)
+    data = {'target': target, 'form': form}
+    return render(request, 'edit_target.html', data)
+
+
+def list_probe_group(request: HttpRequest):
+    probe_groups = ProbeGroup.objects.all()
+    if request.method == 'POST':
+        form = ProbeGroupNewForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect(request.path_info)
+    else:
+        form = ProbeGroupNewForm()
+    data = {'probe_groups': probe_groups, 'form': form}
+    return render(request, 'list_probe_group.html', data)
+
+
+def edit_probe_group(request: HttpRequest, id:int):
+    probe_group = ProbeGroup.objects.get(id=id)
+    if request.method == 'POST':
+        form = ProbeGroupNewForm(request.POST, instance=probe_group)
+        if form.is_valid():
+            form.save()
+            return redirect(request.path_info)
+    else:
+        form = ProbeGroupNewForm(instance=probe_group)
+    data = {'probe_group': probe_group, 'form': form}
+    return render(request, 'edit_probe_group.html', data)

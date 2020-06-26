@@ -24,7 +24,8 @@ class Prober(models.Model):
 class ProberForm(ModelForm):
     class Meta:
         model = Prober
-        fields = ['name', 'description', 'key']
+        # fields = ['name', 'description', 'key']
+        exclude = ['added']
         widgets = {
             'description': TextInput(attrs={'size': 42}),
         }
@@ -59,6 +60,15 @@ class ProbeGroup(models.Model):
     probers = models.ManyToManyField(Prober)
     targets = models.ManyToManyField(ProberTarget)
     added = models.DateTimeField(auto_now_add=True)
+
+
+class ProbeGroupNewForm(ModelForm):
+    class Meta:
+        model = ProbeGroup
+        fields = ['name', 'description']
+        widgets = {
+            'description': TextInput(attrs={'size': 42}),
+        }
 
 
 class SrcDst(models.Model):

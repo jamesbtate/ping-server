@@ -1,31 +1,35 @@
 {% extends "base.html" %}
 
-{% block title %}Probers{% endblock %}
+{% block title %}Targets{% endblock %}
 
 {% block above_content %}
     {%  include "configure_navbar.html" %}
 {% endblock %}
 
 {% block body %}
-    <h1 class="title">Prober Configuration</h1>
+    <h1 class="title">Target Configuration</h1>
     <table class="list">
         <tr>
             <th>ID</th>
             <th>Name</th>
             <th>Description</th>
+            <th>IP Address</th>
             <th>Created</th>
         </tr>
-        {% for prober in probers %}
+        {% for target in targets %}
             <tr>
-                <td><a href="/configure/prober/{{ prober.id }}">{{ prober.id }}</a></td>
-                <td>{{ prober.name }}</td>
-                <td>{{ prober.description }}</td>
-                <td>{{ prober.added }}</td>
+                <td><a href="{% url 'edit_target' target.id %}">
+                    {{ target.id }}
+                </a></td>
+                <td>{{ target.name }}</td>
+                <td>{{ target.description }}</td>
+                <td>{{ target.ip }}</td>
+                <td>{{ target.added }}</td>
             </tr>
         {% endfor %}
     </table>
 
-    <h3>New Prober</h3>
+    <h3>New Target</h3>
     <form method="post">
         {% csrf_token %}
         <table class="form">

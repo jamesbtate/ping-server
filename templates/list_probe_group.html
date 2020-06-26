@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Probe Groups{% endblock %}
+
+{% block above_content %}
+    {%  include "configure_navbar.html" %}
+{% endblock %}
+
+{% block body %}
+    <h1 class="title">Probe Group Configuration</h1>
+    <table class="list">
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Probers</th>
+            <th>Targets</th>
+            <th>Created</th>
+        </tr>
+        {% for probe_group in probe_groups %}
+            <tr>
+                <td><a href="{% url 'edit_probe_group' probe_group.id %}">
+                    {{ probe_group.id }}
+                </a></td>
+                <td>{{ probe_group.name }}</td>
+                <td>{{ probe_group.description }}</td>
+                <td>{{ probe_group.probers|length }}</td>
+                <td>{{ probe_group.targets|length }}</td>
+                <td>{{ probe_group.added }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <h3>New Probe Group</h3>
+    <form method="post">
+        {% csrf_token %}
+        <table class="form">
+            {{ form.as_table }}
+        </table>
+        <input type="submit" value="Submit">
+    </form>
+
+{% endblock %}
