@@ -24,8 +24,8 @@
                 </a></td>
                 <td>{{ probe_group.name }}</td>
                 <td>{{ probe_group.description }}</td>
-                <td>{{ probe_group.probers|length }}</td>
-                <td>{{ probe_group.targets|length }}</td>
+                <td>{{ probe_group.probers.count }}</td>
+                <td>{{ probe_group.targets.count }}</td>
                 <td>{{ probe_group.added }}</td>
             </tr>
         {% endfor %}

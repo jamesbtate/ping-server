@@ -76,3 +76,8 @@ table.list th, table.list td {
 table.form th {
     text-align: right;
 }
+
+/* remove list markers from Django forms with multi-select checkboxes */
+table.form ul {
+    list-style-type: none;
+}

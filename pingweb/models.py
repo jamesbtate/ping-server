@@ -6,16 +6,19 @@
 #   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
-from django.forms import ModelForm, TextInput
+from django.forms import ModelForm, TextInput, CheckboxSelectMultiple
 from enum import IntEnum
 
 
 class Prober(models.Model):
     id = models.BigAutoField(primary_key=True)
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=128, unique=True)
     description = models.TextField(blank=True, null=True)
     key = models.CharField(max_length=255)
     added = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.name} ({self.id})'
 
     class Meta:
         db_table = 'prober'
@@ -37,13 +40,16 @@ class ProberTarget(models.Model):
         ICMP = 'icmp', 'ICMP'
 
     id = models.BigAutoField(primary_key=True)
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=128)
     description = models.TextField(blank=True, null=True)
     ip = models.GenericIPAddressField(protocol='IPv4', verbose_name="IP Address")
     type = models.CharField(max_length=4, choices=TargetType.choices,
                             default=TargetType.ICMP)
     port = models.PositiveIntegerField(blank=True, null=True)
     added = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.name} - {self.ip} ({self.id})'
 
     class Meta:
         db_table = 'prober_target'
@@ -61,19 +67,25 @@ class TargetForm(ModelForm):
 
 class ProbeGroup(models.Model):
     id = models.BigAutoField(primary_key=True)
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=128)
     description = models.TextField(blank=True, null=True)
     probers = models.ManyToManyField(Prober)
     targets = models.ManyToManyField(ProberTarget)
     added = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        return f'{self.name} ({self.id})'
+
 
 class ProbeGroupNewForm(ModelForm):
     class Meta:
         model = ProbeGroup
-        fields = ['name', 'description']
+        # fields = ['name', 'description']
+        exclude = []
         widgets = {
             'description': TextInput(attrs={'size': 42}),
+            'probers': CheckboxSelectMultiple,
+            'targets': CheckboxSelectMultiple,
         }
 
 
