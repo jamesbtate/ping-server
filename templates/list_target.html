@@ -14,6 +14,7 @@
             <th>Name</th>
             <th>Description</th>
             <th>IP Address</th>
+            <th>Type</th>
             <th>Created</th>
         </tr>
         {% for target in targets %}
@@ -24,6 +25,7 @@
                 <td>{{ target.name }}</td>
                 <td>{{ target.description }}</td>
                 <td>{{ target.ip }}</td>
+                <td>{{ target.get_type_display }}</td>
                 <td>{{ target.added }}</td>
             </tr>
         {% endfor %}

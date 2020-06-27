@@ -32,11 +32,16 @@ class ProberForm(ModelForm):
 
 
 class ProberTarget(models.Model):
+
+    class TargetType(models.TextChoices):
+        ICMP = 'icmp', 'ICMP'
+
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=255)
     description = models.TextField(blank=True, null=True)
     ip = models.GenericIPAddressField(protocol='IPv4', verbose_name="IP Address")
-    type = models.CharField(max_length=4)
+    type = models.CharField(max_length=4, choices=TargetType.choices,
+                            default=TargetType.ICMP)
     port = models.PositiveIntegerField(blank=True, null=True)
     added = models.DateTimeField(auto_now_add=True)
 
@@ -47,7 +52,8 @@ class ProberTarget(models.Model):
 class TargetForm(ModelForm):
     class Meta:
         model = ProberTarget
-        fields = ['name', 'description', 'ip']
+        # fields = ['name', 'description', 'ip']
+        exclude = []
         widgets = {
             'description': TextInput(attrs={'size': 42}),
         }
