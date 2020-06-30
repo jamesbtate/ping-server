@@ -18,7 +18,6 @@ import graphing
 import misc
 import env
 
-
 params = env.get_influxdb_params()
 db = DatabaseInfluxDB(params)
 
@@ -61,11 +60,13 @@ def graph_page(request, pair_id: int):
         start_time, stop_time = misc.get_time_extents_from_params('1h')
     graph_options_form.set_datetime_fields(start_time, stop_time)
     graph_options_form.set_field_defaults()
-    graph_image_url = '/graph_image/' + str(pair_id) + '?' + urlencode(request.GET.dict())
+    graph_image_url = '/graph_image/' + str(pair_id) + '?' + urlencode(
+        request.GET.dict())
     t = time.time()
     records = []
     try:
-        records = db.get_poll_data_by_id(pair_id, start=start_time, end=stop_time,
+        records = db.get_poll_data_by_id(pair_id, start=start_time,
+                                         end=stop_time,
                                          convert_to_datetime=True)
     except Exception as e:
         error = 'Error talking to InfluxDB: ' + str(e)
@@ -100,13 +101,15 @@ def graph_image(request, pair_id: int):
     if graph_options_form.is_valid():
         start_time, stop_time = graph_options_form.get_time_extents()
     else:
-        data = {f: e.get_json_data() for f, e in graph_options_form.errors.items()}
+        data = {f: e.get_json_data() for f, e in
+                graph_options_form.errors.items()}
         return HttpResponse(json.dumps(data))
     records = db.get_poll_data_by_id(pair_id, start=start_time, end=stop_time,
                                      convert_to_datetime=True)
     t = time.time()
     kwargs = {}
-    bytes_io = graphing.make_graph_png(pair, records, **graph_options_form.cleaned_data)
+    bytes_io = graphing.make_graph_png(pair, records,
+                                       **graph_options_form.cleaned_data)
     bytes_io.seek(0)
     # draw_time = time.time() - t
     # flask: return send_file(bytes_io, mimetype='image/png')
@@ -149,6 +152,7 @@ def list_prober(request: HttpRequest):
         form = ProberForm()
     data = {'probers': probers, 'form': form}
     return render(request, 'list_prober.html', data)
+
 
 def edit_prober(request: HttpRequest, id: int):
     prober = Prober.objects.get(id=id)
@@ -202,7 +206,7 @@ def list_probe_group(request: HttpRequest):
     return render(request, 'list_probe_group.html', data)
 
 
-def edit_probe_group(request: HttpRequest, id:int):
+def edit_probe_group(request: HttpRequest, id: int):
     probe_group = ProbeGroup.objects.get(id=id)
     if request.method == 'POST':
         form = ProbeGroupNewForm(request.POST, instance=probe_group)

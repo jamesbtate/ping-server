@@ -20,6 +20,9 @@ class Prober(models.Model):
     def __str__(self):
         return f'{self.name} ({self.id})'
 
+    def get_absolute_url(self):
+        return f"/configure/prober/{self.id}"
+
     class Meta:
         db_table = 'prober'
 
@@ -51,6 +54,9 @@ class ProberTarget(models.Model):
     def __str__(self):
         return f'{self.name} - {self.ip} ({self.id})'
 
+    def get_absolute_url(self):
+        return f"/configure/target/{self.id}"
+
     class Meta:
         db_table = 'prober_target'
 
@@ -75,6 +81,9 @@ class ProbeGroup(models.Model):
 
     def __str__(self):
         return f'{self.name} ({self.id})'
+
+    def get_absolute_url(self):
+        return f"/configure/probe_group/{self.id}"
 
 
 class ProbeGroupNewForm(ModelForm):
