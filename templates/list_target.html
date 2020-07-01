@@ -16,6 +16,7 @@
             <th>IP Address</th>
             <th>Type</th>
             <th>Created</th>
+            <th>Actions</th>
         </tr>
         {% for target in targets %}
             <tr>
@@ -27,6 +28,12 @@
                 <td>{{ target.ip }}</td>
                 <td>{{ target.get_type_display }}</td>
                 <td>{{ target.added }}</td>
+                <td>
+                    <form method="post", action="{%  url 'delete_target' target.id %}">
+                        {% csrf_token %}
+                        <input type="submit" value="Delete">
+                    </form>
+                </td>
             </tr>
         {% endfor %}
     </table>

@@ -75,8 +75,8 @@ class ProbeGroup(models.Model):
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=128)
     description = models.TextField(blank=True, null=True)
-    probers = models.ManyToManyField(Prober)
-    targets = models.ManyToManyField(ProberTarget)
+    probers = models.ManyToManyField(Prober, null=True)
+    targets = models.ManyToManyField(ProberTarget, null=True)
     added = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

@@ -15,7 +15,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from pingweb import views
+from pingweb import views, class_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -28,10 +28,21 @@ urlpatterns = [
     path('gc', views.garbage_collect),
     path('cache_info/get_poll_data', views.cache_info_get_poll_data),
     path('configure', views.configure),
-    path('configure/prober', views.list_prober),
+    path('configure/prober', views.list_prober, name='list_prober'),
     path('configure/prober/<int:id>', views.edit_prober, name='edit_prober'),
-    path('configure/target', views.list_target),
+    path('configure/prober/<int:pk>/delete',
+         class_views.ProberDelete.as_view(),
+         name='delete_prober'),
+    path('configure/target', views.list_target, name='list_target'),
     path('configure/target/<int:id>', views.edit_target, name='edit_target'),
-    path('configure/probe_group', views.list_probe_group),
-    path('configure/probe_group/<int:id>', views.edit_probe_group, name='edit_probe_group'),
+    path('configure/target/<int:pk>/delete',
+         class_views.TargetDelete.as_view(),
+         name='delete_target'),
+    path('configure/probe_group', views.list_probe_group,
+         name='list_probe_group'),
+    path('configure/probe_group/<int:id>', views.edit_probe_group,
+         name='edit_probe_group'),
+    path('configure/probe_group/<int:pk>/delete',
+         class_views.ProbeGroupDelete.as_view(),
+         name='delete_probe_group'),
 ]

@@ -94,7 +94,7 @@ def graph_page(request, pair_id: int):
     # flask: return render_template("graph.html", **data)
     return render(request, 'graph.html', data)
 
-
+ 
 def graph_image(request, pair_id: int):
     pair = db.get_src_dst_by_id(pair_id)
     graph_options_form = GraphOptionsForm(request.GET)

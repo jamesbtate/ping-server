@@ -16,6 +16,7 @@
             <th>Probers</th>
             <th>Targets</th>
             <th>Created</th>
+            <th>Actions</th>
         </tr>
         {% for probe_group in probe_groups %}
             <tr>
@@ -27,6 +28,12 @@
                 <td>{{ probe_group.probers.count }}</td>
                 <td>{{ probe_group.targets.count }}</td>
                 <td>{{ probe_group.added }}</td>
+                <td>
+                    <form method="post", action="{%  url 'delete_probe_group' probe_group.id %}">
+                        {% csrf_token %}
+                        <input type="submit" value="Delete">
+                    </form>
+                </td>
             </tr>
         {% endfor %}
     </table>

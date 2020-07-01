@@ -14,6 +14,7 @@
             <th>Name</th>
             <th>Description</th>
             <th>Created</th>
+            <th>Actions</th>
         </tr>
         {% for prober in probers %}
             <tr>
@@ -23,6 +24,12 @@
                 <td>{{ prober.name }}</td>
                 <td>{{ prober.description }}</td>
                 <td>{{ prober.added }}</td>
+                <td>
+                    <form method="post", action="{%  url 'delete_prober' prober.id %}">
+                        {% csrf_token %}
+                        <input type="submit" value="Delete">
+                    </form>
+                </td>
             </tr>
         {% endfor %}
     </table>
