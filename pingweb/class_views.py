@@ -53,7 +53,7 @@ class ProberDelete(DeleteView):
 
 
 def list_target(request: HttpRequest):
-    targets = ProberTarget.objects.all()
+    targets = Target.objects.all()
     if request.method == 'POST':
         form = TargetForm(request.POST)
         if form.is_valid():
@@ -66,7 +66,7 @@ def list_target(request: HttpRequest):
 
 
 def edit_target(request: HttpRequest, id: int):
-    target = ProberTarget.objects.get(id=id)
+    target = Target.objects.get(id=id)
     if request.method == 'POST':
         form = TargetForm(request.POST, instance=target)
         if form.is_valid():
@@ -79,7 +79,7 @@ def edit_target(request: HttpRequest, id: int):
 
 
 class TargetDelete(DeleteView):
-    model = ProberTarget
+    model = Target
     success_url = reverse_lazy('list_target')
 
 

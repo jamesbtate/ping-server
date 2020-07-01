@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
                 ('description', models.TextField(blank=True, null=True)),
                 ('added', models.DateTimeField(auto_now_add=True)),
                 ('probers', models.ManyToManyField(to='pingweb.Prober')),
-                ('targets', models.ManyToManyField(to='pingweb.ProberTarget')),
+                ('targets', models.ManyToManyField(to='pingweb.Target')),
             ],
         ),
     ]

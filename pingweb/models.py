@@ -37,7 +37,7 @@ class ProberForm(ModelForm):
         }
 
 
-class ProberTarget(models.Model):
+class Target(models.Model):
 
     class TargetType(models.TextChoices):
         ICMP = 'icmp', 'ICMP'
@@ -63,7 +63,7 @@ class ProberTarget(models.Model):
 
 class TargetForm(ModelForm):
     class Meta:
-        model = ProberTarget
+        model = Target
         # fields = ['name', 'description', 'ip']
         exclude = []
         widgets = {
@@ -76,7 +76,7 @@ class ProbeGroup(models.Model):
     name = models.CharField(max_length=128)
     description = models.TextField(blank=True, null=True)
     probers = models.ManyToManyField(Prober, blank=True)
-    targets = models.ManyToManyField(ProberTarget, blank=True)
+    targets = models.ManyToManyField(Target, blank=True)
     added = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
