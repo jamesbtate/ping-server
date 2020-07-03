@@ -163,10 +163,7 @@ def edit_prober(request: HttpRequest, id: int):
             return redirect(request.path_info)
     else:
         form = ProberForm(instance=prober)
-    targets = set()
-    for group in prober.probegroup_set.all():
-        targets.update(group.targets.all())
-    data = {'prober': prober, 'form': form, 'targets': targets}
+    data = {'prober': prober, 'form': form}
     return render(request, 'edit_prober.html', data)
 
 

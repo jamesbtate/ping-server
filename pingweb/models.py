@@ -26,6 +26,12 @@ class Prober(models.Model):
     class Meta:
         db_table = 'prober'
 
+    def get_unique_targets(self):
+        targets = set()
+        for group in self.probegroup_set.all():
+            targets.update(group.targets.all())
+        return targets
+
 
 class ProberForm(ModelForm):
     class Meta:

@@ -26,7 +26,7 @@
 
     <h2>Effective Targets</h2>
     <ul>
-        {% for target in targets %}
+        {% for target in prober.get_unique_targets %}
             <li>{{ target }}</li>
         {% endfor %}
     </ul>
