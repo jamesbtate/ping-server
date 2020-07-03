@@ -7,7 +7,8 @@
 {% endblock %}
 
 {% block body %}
-    <h1 class="title">Edit Prober</h1>
+    <h1 class="title">Prober</h1>
+    <h2>Edit</h2>
     <form method="post">
         {% csrf_token %}
         <table class="form">
@@ -15,5 +16,20 @@
         </table>
         <input type="submit" value="Submit">
     </form>
+
+    <h2> Group Membership</h2>
+    <ul>
+        {% for group in prober.probegroup_set.all %}
+            <li>{{ group }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Effective Targets</h2>
+    <ul>
+        {% for target in targets %}
+            <li>{{ target }}</li>
+        {% endfor %}
+    </ul>
+
 
 {% endblock %}

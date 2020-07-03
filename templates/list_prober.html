@@ -13,6 +13,7 @@
             <th>ID</th>
             <th>Name</th>
             <th>Description</th>
+            <th>Groups</th>
             <th>Created</th>
             <th>Actions</th>
         </tr>
@@ -23,6 +24,7 @@
                 </a></td>
                 <td>{{ prober.name }}</td>
                 <td>{{ prober.description }}</td>
+                <td>{{ prober.probegroup_set.count }}</td>
                 <td>{{ prober.added }}</td>
                 <td>
                     <form method="post", action="{%  url 'delete_prober' prober.id %}">
