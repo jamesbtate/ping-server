@@ -118,6 +118,7 @@ class ServerSetting(models.Model):
     id = models.BigAutoField(primary_key=True)
     name = models.CharField(max_length=255)
     value = models.CharField(max_length=255)
+    updated = models.DateTimeField(auto_now=True)
 
 
 class CollectorMessageType(IntEnum):
