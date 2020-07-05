@@ -15,6 +15,7 @@ import queue
 import json
 
 import django_standalone  # need this. Don't delete because PyCharm thinks it is "unused"
+from pingweb.models import Prober
 from writer import Writer
 import config
 import misc
@@ -35,7 +36,30 @@ def handle_output_message(remote_addr: tuple, client_name: str, message: dict):
     return message['id']
 
 
-def handle_auth_message(remote_addr: tuple, message: dict, websocket: Websocket) -> Optional[str]:
+async def send_target_list(name: str, websocket: Websocket):
+    """ Gather the list of targets for this client and send it.
+
+    Does nothing if client's name is not in the database.
+    """
+    try:
+        prober = Prober.objects.get(name=name)
+    except Prober.DoesNotExist:
+        logging.error(f"Cannot get targets for unknown prober {name}")
+        return
+    targets = prober.get_unique_targets()
+    target_dicts = []
+    for target in targets:
+        d = {
+            'ip': target.ip,
+            'type': target.type,
+            'port': target.port,
+        }
+        target_dicts.append(d)
+    message = json.dumps({'type': 'target_list', 'targets': target_dicts})
+    await websocket.send(message)
+
+
+async def handle_auth_message(remote_addr: tuple, message: dict, websocket: Websocket) -> Optional[str]:
     global clients
     # right now, we don't actually do any authentication. we just register the client.
     name = message['name']
@@ -45,6 +69,7 @@ def handle_auth_message(remote_addr: tuple, message: dict, websocket: Websocket)
     if name not in clients:
         clients[name] = websocket
         logging.info("Client from %s authenticated with name %s", remote_addr, name)
+        await send_target_list(name, websocket)
     else:
         logging.error("Client %s already registered. Duplicate name from %s", name, remote_addr)
         return None
