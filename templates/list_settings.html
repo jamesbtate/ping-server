@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block above_content %}
+    {%  include "configure_navbar.html" %}
+{% endblock %}
+
+{% block body %}
+    <h1 class="title">Settings</h1>
+    <h2>Edit</h2>
+    <ul>
+    {% for setting in settings %}
+        <li>{{ setting.name }} - {{ setting.value }}</li>
+    {% endfor %}
+    </ul>
+    <p>Settings: {{  settings.count }}</p>
+    
+{% endblock %}

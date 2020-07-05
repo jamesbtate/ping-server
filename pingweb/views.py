@@ -217,3 +217,9 @@ def edit_probe_group(request: HttpRequest, id: int):
         form = ProbeGroupNewForm(instance=probe_group)
     data = {'probe_group': probe_group, 'form': form}
     return render(request, 'edit_probe_group.html', data)
+
+
+def list_settings(request: HttpRequest):
+    settings = ServerSetting.objects.all()
+    data = {'settings': settings}
+    return render(request, 'list_settings.html', data)
