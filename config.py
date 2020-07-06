@@ -3,6 +3,7 @@ Module for retrieving configuration settings from the DB or the default values
 """
 
 from pingweb.models import ServerSetting
+import logging
 
 
 DEFAULTS = {
@@ -32,4 +33,19 @@ def get_setting_boolean(name):
     return bool(get_setting_string(name))
 
 
+def check_defaults_in_db():
+    """ Verify the default settings all exist as settings in the DB.
 
+    Creates the settings with the default value if it does not exist.
+    Does not change the value of existing settings.
+    """
+    for key in DEFAULTS:
+        try:
+            _ = ServerSetting.objects.get(name=key)
+        except ServerSetting.DoesNotExist:
+            value = DEFAULTS[key]
+            new_setting = ServerSetting()
+            new_setting.name = key
+            new_setting.value = value
+            new_setting.save()
+            logging.info(f"Saved missing default setting: {key}={value}")

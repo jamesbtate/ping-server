@@ -132,6 +132,7 @@ def parse_args() -> argparse.Namespace:
 
 def startup_checks(args):
     """ Checks the server should do before it is ready to go. """
+    config.check_defaults_in_db()
     pass
 
 

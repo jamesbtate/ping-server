@@ -120,6 +120,9 @@ class ServerSetting(models.Model):
     value = models.CharField(max_length=255)
     updated = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return f"{self.name} - ({self.id})"
+
 
 class CollectorMessageType(IntEnum):
     ReloadSettings = 1
