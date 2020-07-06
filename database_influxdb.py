@@ -80,7 +80,7 @@ class DatabaseInfluxDB(Database):
             src_dst.prober_id = prober_id
             src_dst.dst = dst
             src_dst.save()
-            pair_id = src_dst.id()
+            pair_id = src_dst.id
             logging.debug("Added SrcDst ID %i to database", pair_id)
         else:
             result = objects[0]

@@ -5,6 +5,7 @@ Listens for connections from transmitters and saves ping output in DB.
 
 
 from websockets.server import WebSocketServerProtocol as Websocket
+from asgiref.sync import sync_to_async
 from typing import Optional
 from queue import Queue
 import websockets
@@ -36,16 +37,19 @@ def handle_output_message(remote_addr: tuple, client_name: str, message: dict):
     return message['id']
 
 
-async def send_target_list(name: str, websocket: Websocket):
-    """ Gather the list of targets for this client and send it.
+@sync_to_async
+def get_target_list(name: str) -> str:
+    """ Gather the list of targets for this client and craft the message.
 
     Does nothing if client's name is not in the database.
+
+    :return: The JSON-dumped string message to send to the client.
     """
     try:
         prober = Prober.objects.get(name=name)
     except Prober.DoesNotExist:
         logging.error(f"Cannot get targets for unknown prober {name}")
-        return
+        return None
     targets = prober.get_unique_targets()
     target_dicts = []
     for target in targets:
@@ -56,7 +60,7 @@ async def send_target_list(name: str, websocket: Websocket):
         }
         target_dicts.append(d)
     message = json.dumps({'type': 'target_list', 'targets': target_dicts})
-    await websocket.send(message)
+    return message
 
 
 async def handle_auth_message(remote_addr: tuple, message: dict, websocket: Websocket) -> Optional[str]:
@@ -69,7 +73,11 @@ async def handle_auth_message(remote_addr: tuple, message: dict, websocket: Webs
     if name not in clients:
         clients[name] = websocket
         logging.info("Client from %s authenticated with name %s", remote_addr, name)
-        await send_target_list(name, websocket)
+        message = await get_target_list(name)
+        if message is None:
+            return None
+        await websocket.send(message)
+        logging.debug(f"Sent target list to client {name}")
     else:
         logging.error("Client %s already registered. Duplicate name from %s", name, remote_addr)
         return None
@@ -107,7 +115,7 @@ async def handle_client(websocket: websockets.server.WebSocketServerProtocol, re
             if 'type' not in message:
                 logging.error("Message from %s (%s) has no type. Discarding.", client_name, remote_addr)
             elif message['type'] == 'auth':
-                client_name = handle_auth_message(remote_addr, message, websocket)
+                client_name = await handle_auth_message(remote_addr, message, websocket)
             elif not client_name:
                 logging.error("Received non-auth type message from un-authed client %s", remote_addr)
             elif message['type'] == 'output':

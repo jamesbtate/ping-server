@@ -115,6 +115,7 @@ def handle_target_list(message: dict):
     target_ips = [_['ip'] for _ in target_dicts]
     # this is where we would do something complicated if we supported more than ICMP echo.
     pinger.set_destinations(target_ips)
+    logging.debug("Updated target list")
 
 
 async def receive_messages(websocket: WebSocket, unconfirmed_list: list):
