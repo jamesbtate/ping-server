@@ -63,23 +63,47 @@ def get_target_list(name: str) -> str:
     return message
 
 
+@sync_to_async
+def get_prober_by_name(name: str):
+    """ Wrapper to get Prober from Django ORM.
+
+    Uses sync_to_async decorator because Django ORM is not async-compatible.
+
+    :return: Prober object or None if no object exists.
+    """
+    try:
+        prober = Prober.objects.get(name=name)
+        return prober
+    except Prober.DoesNotExist:
+        return None
+
+
 async def handle_auth_message(remote_addr: tuple, message: dict, websocket: Websocket) -> Optional[str]:
     global clients
     # right now, we don't actually do any authentication. we just register the client.
     name = message['name']
     if not name:
-        logging.error("Blank name in auth message from %s", remote_addr)
+        logging.error("Blank name in auth message from %s. Disconnecting client", remote_addr)
+        await websocket.close()
         return None
     if name not in clients:
+        prober = await get_prober_by_name(name)
+        if prober is None:
+            logging.error(f"Connection from unknown prober name: {name}. Disconnecting client.")
+            await websocket.close()
+            return None
         clients[name] = websocket
         logging.info("Client from %s authenticated with name %s", remote_addr, name)
         message = await get_target_list(name)
         if message is None:
+            logging.error(f"No targets for prober {name}. Disconnecting client.")
+            await websocket.close()
             return None
         await websocket.send(message)
         logging.debug(f"Sent target list to client {name}")
     else:
-        logging.error("Client %s already registered. Duplicate name from %s", name, remote_addr)
+        logging.error(f"Client {name} already registered. Duplicate name from {remote_addr}. Disconnecting client.")
+        await websocket.close()
         return None
     return name
 
