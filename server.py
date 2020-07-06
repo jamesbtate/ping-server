@@ -135,20 +135,29 @@ def startup_checks(args):
     pass
 
 
-def main():
-    global write_queue
-    args = parse_args()
-    logger = logging.getLogger('websockets.server')
-    logger.setLevel(logging.ERROR)
-    logger.addHandler(logging.StreamHandler())
+def setup_logging(args):
+    ws_logger = logging.getLogger('websockets.server')
+    ws_logger.setLevel(logging.ERROR)
+    ws_logger.addHandler(logging.StreamHandler())
     log_format = '%(asctime)s %(levelname)s:%(module)s:%(funcName)s# ' \
                  + '%(message)s'
     if args.foreground:
-        logging.basicConfig(format=log_format, level=args.log_level)
+        handler = logging.StreamHandler()
     else:
         log_filename = config.get_setting_string('collector_log_file')
-        logging.basicConfig(filename=log_filename, format=log_format,
-                            level=args.log_level)
+        handler = logging.FileHandler(log_filename)
+    formatter = logging.Formatter(log_format)
+    handler.setFormatter(formatter)
+    root_logger = logging.getLogger()
+    root_logger.handlers = [handler]
+    root_logger.setLevel(args.log_level)
+    logging.debug(f"Setup logging with level: {args.log_level}")
+
+
+def main():
+    global write_queue
+    args = parse_args()
+    setup_logging(args)
     startup_checks(args)
     write_queue = queue.Queue()
     listen_ip = config.get_setting_string('ws_address')
