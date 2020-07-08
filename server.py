@@ -6,7 +6,7 @@ Listens for connections from transmitters and saves ping output in DB.
 
 from websockets.server import WebSocketServerProtocol as Websocket
 from asgiref.sync import sync_to_async
-from typing import Optional
+from typing import Optional, List, Set
 from queue import Queue
 import websockets
 import argparse
@@ -16,13 +16,13 @@ import queue
 import json
 
 import django_standalone  # need this. Don't delete because PyCharm thinks it is "unused"
-from pingweb.models import Prober
+from pingweb.models import Prober, Target, CollectorMessage, CollectorMessageType
 from writer import Writer
 import config
 import misc
 
 
-write_queue: Queue = None  # queue of messages that need to be recorded.
+write_queue: Optional[Queue] = None  # queue of messages that need to be recorded.
 clients: dict = {}  # all connected clients, keyed on client name.
 
 
@@ -38,29 +38,18 @@ def handle_output_message(remote_addr: tuple, client_name: str, message: dict):
 
 
 @sync_to_async
-def get_target_list(name: str) -> str:
-    """ Gather the list of targets for this client and craft the message.
+def get_target_list(name: str):
+    """ Get the set of targets for this client/prober.
 
-    Does nothing if client's name is not in the database.
-
-    :return: The JSON-dumped string message to send to the client.
+    :return: the set() of targets returned by the model or an empty set.
     """
     try:
         prober = Prober.objects.get(name=name)
     except Prober.DoesNotExist:
         logging.error(f"Cannot get targets for unknown prober {name}")
-        return None
+        return set()
     targets = prober.get_unique_targets()
-    target_dicts = []
-    for target in targets:
-        d = {
-            'ip': target.ip,
-            'type': target.type,
-            'port': target.port,
-        }
-        target_dicts.append(d)
-    message = json.dumps({'type': 'target_list', 'targets': target_dicts})
-    return message
+    return targets
 
 
 @sync_to_async
@@ -76,6 +65,32 @@ def get_prober_by_name(name: str):
         return prober
     except Prober.DoesNotExist:
         return None
+
+
+async def send_target_list(name: str, websocket: Websocket) -> int:
+    """ Send target list to prober with given name and websocket.
+
+    Disconnect clients with empty target list.
+
+    :return: number of targets sent to this client
+    """
+    targets: Set = await get_target_list(name)
+    if not targets:
+        logging.error(f"No targets for prober {name}. Disconnecting client.")
+        await websocket.close()
+        return 0
+    target_dicts = []
+    for target in targets:
+        d = {
+            'ip': target.ip,
+            'type': target.type,
+            'port': target.port,
+        }
+        target_dicts.append(d)
+    message = json.dumps({'type': 'target_list', 'targets': target_dicts})
+    await websocket.send(message)
+    logging.debug(f"Sent target list to client {name}")
+    return len(targets)
 
 
 async def handle_auth_message(remote_addr: tuple, message: dict, websocket: Websocket) -> Optional[str]:
@@ -94,13 +109,7 @@ async def handle_auth_message(remote_addr: tuple, message: dict, websocket: Webs
             return None
         clients[name] = websocket
         logging.info("Client from %s authenticated with name %s", remote_addr, name)
-        message = await get_target_list(name)
-        if message is None:
-            logging.error(f"No targets for prober {name}. Disconnecting client.")
-            await websocket.close()
-            return None
-        await websocket.send(message)
-        logging.debug(f"Sent target list to client {name}")
+        await send_target_list(name, websocket)
     else:
         logging.error(f"Client {name} already registered. Duplicate name from {remote_addr}. Disconnecting client.")
         await websocket.close()
@@ -187,6 +196,36 @@ def setup_logging(args):
     logging.debug(f"Setup logging with level: {args.log_level}")
 
 
+async def notify_probers():
+    """ Send current target list to all connected probers (clients) """
+    global clients
+    for name in clients:
+        websocket = clients[name]
+        await send_target_list(name, websocket)
+
+
+@sync_to_async
+def get_unread_messages():
+    messages = CollectorMessage.get_unread_messages()
+    return messages
+
+
+async def check_server_messages():
+    while True:
+        messages = await get_unread_messages()
+        logging.debug(f"Checked for messages. Got {len(messages)} unread messages.")
+        need_notify_probers = False
+        for message in messages:
+            if message.message == CollectorMessageType.NotifyProbers:
+                logging.debug("Got a NotifyProbers message")
+                need_notify_probers = True
+            else:
+                logging.error(f"Unhandled CollectorMessage type: {message.message}")
+        if need_notify_probers:
+            await notify_probers()
+        await asyncio.sleep(10)
+
+
 def main():
     global write_queue
     args = parse_args()
@@ -199,8 +238,11 @@ def main():
     logging.info("Started listening on %s:%s", listen_ip, str(listen_port))
     writer = Writer(write_queue)
     writer.start()
-    asyncio.get_event_loop().run_until_complete(server)
+    event_loop = asyncio.get_event_loop()
+    event_loop.run_until_complete(server)
+    asyncio.ensure_future(check_server_messages())
     try:
+        # need to call this. not enough to just use run_until_complete() ...
         asyncio.get_event_loop().run_forever()
     except KeyboardInterrupt:
         logging.warning("Server shutting down.")

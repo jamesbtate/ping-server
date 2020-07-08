@@ -46,4 +46,6 @@ urlpatterns = [
          class_views.ProbeGroupDelete.as_view(),
          name='delete_probe_group'),
     path('configure/settings', views.list_settings, name='list_settings'),
+    path('configure/update_prober_targets', views.update_prober_targets,
+         name='update_prober_targets'),
 ]

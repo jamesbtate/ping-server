@@ -223,3 +223,10 @@ def list_settings(request: HttpRequest):
     settings = ServerSetting.objects.all()
     data = {'settings': settings}
     return render(request, 'list_settings.html', data)
+
+
+def update_prober_targets(request):
+    message = CollectorMessage()
+    message.message = CollectorMessageType.NotifyProbers
+    message.save()
+    return HttpResponse("Queued server message to update prober target lists")

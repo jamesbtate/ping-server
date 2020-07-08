@@ -1,13 +1,7 @@
-# This is an auto-generated Django model module.
-# You'll have to do the following manually to clean this up:
-#   * Rearrange models' order
-#   * Make sure each model has one field with primary_key=True
-#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
-#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
-# Feel free to rename the models, but don't rename db_table values or field names.
-from django.db import models
 from django.forms import ModelForm, TextInput, CheckboxSelectMultiple
+from django.db import models
 from enum import IntEnum
+from typing import List
 
 
 class Prober(models.Model):
@@ -138,9 +132,20 @@ class CollectorMessage(models.Model):
     id = models.BigAutoField(primary_key=True)
     message = models.IntegerField(choices=CollectorMessageType.choices())
     posted = models.DateTimeField(auto_now_add=True)
+    read = models.BooleanField(default=False)
 
-    def type(self):
-        return CollectorMessageType(self.message)
+    @classmethod
+    def get_unread_messages(cls) -> List['CollectorMessage']:
+        """ Get a list of messages that have not been retrieved
+
+        Marks the returned messages as retrieved.
+
+        :return: a list of CollectorMessages or an empty list
+        """
+        messages = CollectorMessage.objects.filter(read=False)
+        messages_list = list(messages)  # this must happen before the update
+        messages.update(read=True)
+        return messages_list
 
 
 class Version(models.Model):
