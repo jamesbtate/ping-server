@@ -241,7 +241,7 @@ def main():
     logging.info("Starting event loop")
     event_loop = asyncio.get_event_loop()
     main_task = maintain_collector_connection(results_queue, unconfirmed_list)
-    try:6
+    try:
         event_loop.run_until_complete(main_task)
     except KeyboardInterrupt:
         logging.debug("Caught KeyboardInterrupt in main()")
