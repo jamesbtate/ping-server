@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% block title %}Multiple Graphs{% endblock %}
+{% block errors %}{{ error }}{% endblock %}
+{% block body %}
+    <h3>Graphs</h3>
+    {% for pair_id in pair_ids %}
+        <img src="/graph_image/{{ pair_id }}{{ graph_image_query_string }}" />
+    {% endfor %}
+    <p>
+        <a href="{% url 'multigraph' pair_ids_str %}?start_time={{ start_time }}&stop_time={{ stop_time }}">Permalink to this page</a>
+        <a href="{% url 'multigraph' pair_ids_str %}?window=10m">Last 10 Minutes</a>
+        <a href="{% url 'multigraph' pair_ids_str %}?window=1h">Last Hour</a>
+        <a href="{% url 'multigraph' pair_ids_str %}?window=8h">Last 8 Hours</a>
+        <a href="{% url 'multigraph' pair_ids_str %}?window=1d">Last Day</a>
+        <a href="{% url 'multigraph' pair_ids_str %}?window=1w">Last Week</a>
+    </p>
+
+    <h3>Graph Options</h3>
+    <form method="GET">
+        {{ graph_options_form.non_field_errors }}
+        <p id="graph_options_time">
+            {{ graph_options_form.start_time.errors }}
+            <label for="{{ graph_options_form.start_time.id_for_label }}">Start Time:</label>
+            {{ graph_options_form.start_time }}
+
+            {{ graph_options_form.stop_time.errors }}
+            <label for="{{ graph_options_form.stop_time.id_for_label }}">Stop Time:</label>
+            {{ graph_options_form.stop_time }}
+        </p>
+        <p id="graph_options_checkboxes">
+            {{ graph_options_form.reduce.errors }}
+            <input type="hidden" name="reduce" value="">
+            <label for="{{ graph_options_form.reduce.id_for_label }}">Reduce Data:</label>
+            {{ graph_options_form.reduce }}
+            {{ graph_options_form.points.errors }}
+            <input type="hidden" name="points" value="">
+            <label for="{{ graph_options_form.points.id_for_label }}">Show Points:</label>
+            {{ graph_options_form.points }}
+            {{ graph_options_form.timeouts.errors }}
+            <input type="hidden" name="timeouts" value="">
+            <label for="{{ graph_options_form.timeouts.id_for_label }}">Show Timeouts:</label>
+            {{ graph_options_form.timeouts }}
+            {{ graph_options_form.success_rate.errors }}
+            <input type="hidden" name="success_rate" value="">
+            <label for="{{ graph_options_form.success_rate.id_for_label }}">Show Success Rate:</label>
+            {{ graph_options_form.success_rate }}
+        </p>
+        <p>
+            <input type="submit" value="Go">
+        </p>
+    </form>
+
+    <h3>Debug</h3>
+    <p>Data retrieval time: {{ retrieve_time|floatformat:3 }} seconds</p>
+    {# <p>Graph draw time: {{ "%0.3f" % draw_time }} seconds</p> #}
+    {# <pre> {% filter force_escape %} {% debug %} {% endfilter %} </pre> #}
+    <p>start_time: {{ start_time }}</p>
+    <p>stop_time: {{ stop_time }}</p>
+    <p>form data: {{  graph_options_form.data }}</p>
+    <p>form cleaned_data: {{  graph_options_form.cleaned_data }}</p>
+{% endblock %}

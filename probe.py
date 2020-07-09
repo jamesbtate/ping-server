@@ -63,7 +63,7 @@ async def maintain_collector_connection(results_queue: TQueue,
         try:
             websocket = await websockets.connect(url)
             logging.debug("Connected to websocket %s", url)
-            auth_message = {'type': 'auth', 'name': name}
+            auth_message = {'type': 'auth', 'name': name, }
             await websocket.send(json.dumps(auth_message))
         except OSError as e:
             logging.error("Error connecting to websocket: %s", str(e))
@@ -241,7 +241,7 @@ def main():
     logging.info("Starting event loop")
     event_loop = asyncio.get_event_loop()
     main_task = maintain_collector_connection(results_queue, unconfirmed_list)
-    try:
+    try:6
         event_loop.run_until_complete(main_task)
     except KeyboardInterrupt:
         logging.debug("Caught KeyboardInterrupt in main()")
