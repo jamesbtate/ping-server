@@ -7,6 +7,7 @@ import matplotlib.dates
 matplotlib.use('agg')  # this does nothing if matplotlib.pyplot is imported first
 import matplotlib.pyplot as plt
 from typing import Tuple, List, Dict
+from datetime import datetime as dt
 import datetime
 import base64
 import io
@@ -149,7 +150,8 @@ def reduce_data_points(records: List[Dict], bucket_duration: int) -> List[Dict]:
 
 def make_graph_figure(pair, records, points=True, timeouts=True,
                       reduce=None, success_rate=False, minimum=False,
-                      average=False, maximum=False, **kwargs):
+                      average=False, maximum=False, start: dt = None,
+                      stop: dt = None, trim_x_axis=False, **kwargs):
     """ Make a graph for the given pair and list of records
 
     pair - dict - record from DB containing attributes of the src/dst pair.
@@ -161,6 +163,9 @@ def make_graph_figure(pair, records, points=True, timeouts=True,
     minimum - T/F - draw a line for the minimum response time in each bucket.
     maximum - T/F - draw a line for the maximum response time in each bucket.
     average - T/F - draw a line for the average response time in each bucket.
+    start - x-axis minimum value. Or None (default) to scope to leftmost data point.
+    stop - x-axis maximum value. Or None (default) to scope to rightmost data point.
+    trim_x_axis - T/F - if True, ignore start and stop kwargs and trim graph to data points.
     **kwargs - Other kwargs are ignored. They are not passed anywhere else.
 
     The various T/F kwargs after the reduce kwarg are ignored if reduce is false-y.
@@ -180,6 +185,10 @@ def make_graph_figure(pair, records, points=True, timeouts=True,
             success_values.append(record['latency'] * 1000)
     figure, axes = ping_figure(success_times, success_values, timeout_times,
                                label=title, x_label="Time (UTC)", y_label="Milliseconds")
+    if trim_x_axis:
+        start = None
+        stop = None
+    axes.set_xbound(start, stop)
     if reduce:
         buckets = reduce_data_points(records, reduce)
         bucket_times = [_['time'] for _ in buckets]

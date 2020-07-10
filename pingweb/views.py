@@ -6,13 +6,13 @@ Django views for the pingweb application
 from django.shortcuts import render, redirect
 from django.http import HttpRequest, HttpResponse, QueryDict
 from urllib.parse import urlencode
+import datetime
 import json
 import time
 import gc
 
 from pingweb.models import *
 from pingweb.forms import GraphOptionsForm
-
 from database_influxdb import DatabaseInfluxDB
 import graphing
 import misc
@@ -135,6 +135,8 @@ def graph_image(request, pair_id: int):
     t = time.time()
     kwargs = {}
     bytes_io = graphing.make_graph_png(pair, records,
+                                       start=datetime.datetime.fromtimestamp(start_time),
+                                       stop=datetime.datetime.fromtimestamp(stop_time),
                                        **graph_options_form.cleaned_data)
     bytes_io.seek(0)
     # draw_time = time.time() - t

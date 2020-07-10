@@ -15,6 +15,7 @@ class GraphOptionsForm(forms.Form):
     points = forms.BooleanField(initial=True, required=False)
     timeouts = forms.BooleanField(initial=True, required=False)
     success_rate = forms.BooleanField(required=False)
+    trim_x_axis = forms.BooleanField(required=False)
 
     def get_time_extents(self) -> Tuple[int, int]:
         """ Returns integer start and stop times calculated from the datetime.datetime values.
