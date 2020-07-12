@@ -37,7 +37,6 @@ def handle_output_message(remote_addr: tuple, client_name: str, message: dict):
     return message['id']
 
 
-@sync_to_async
 def get_target_list(name: str):
     """ Get the set of targets for this client/prober.
 
@@ -50,9 +49,9 @@ def get_target_list(name: str):
         return set()
     targets = prober.get_unique_targets()
     return targets
+get_target_list_async = sync_to_async(get_target_list, thread_sensitive=True)
 
 
-@sync_to_async
 def get_prober_by_name(name: str):
     """ Wrapper to get Prober from Django ORM.
 
@@ -65,6 +64,7 @@ def get_prober_by_name(name: str):
         return prober
     except Prober.DoesNotExist:
         return None
+get_prober_by_name_async = sync_to_async(get_prober_by_name, thread_sensitive=True)
 
 
 async def send_target_list(name: str, websocket: Websocket) -> int:
@@ -74,7 +74,7 @@ async def send_target_list(name: str, websocket: Websocket) -> int:
 
     :return: number of targets sent to this client
     """
-    targets: Set = await get_target_list(name)
+    targets: Set = await get_target_list_async(name)
     if not targets:
         logging.error(f"No targets for prober {name}. Disconnecting client.")
         await websocket.close()
@@ -102,7 +102,7 @@ async def handle_auth_message(remote_addr: tuple, message: dict, websocket: Webs
         await websocket.close()
         return None
     if name not in clients:
-        prober = await get_prober_by_name(name)
+        prober = await get_prober_by_name_async(name)
         if prober is None:
             logging.error(f"Connection from unknown prober name: {name}. Disconnecting client.")
             await websocket.close()

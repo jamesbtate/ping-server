@@ -6,3 +6,4 @@ docker build --target base -t ping:base .
 docker build --target probe -t ping:probe .
 docker build --target collector -t ping:collector .
 docker build --target web -t ping:web .
+docker build -t ping:nginx -f Dockerfile-nginx .
