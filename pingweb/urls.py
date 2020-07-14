@@ -22,7 +22,7 @@ urlpatterns = [
     path('hello', views.hello),
     path('test', views.test),
     path('', views.index),
-    path('graph/<int:pair_id>', views.graph_page),
+    path('graph/<int:pair_id>', views.graph_page, name="graph_page"),
     path('multigraph/<str:pair_ids_str>', views.multigraph_page, name='multigraph'),
     path('graph_image/<int:pair_id>', views.graph_image),
     path('about', views.about),

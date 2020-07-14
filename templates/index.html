@@ -2,29 +2,38 @@
 {% block title %}Ping Dashboard{% endblock %}
 {% block errors %}{{ error }}{% endblock %}
 {% block body %}
-<h1 class="title">Ping Dashboard</h1>
-<h3>Source-Destination Pairs</h3>
-<table>
-    <tr>
-        <th>ID</th>
-        <th>Prober</th>
-        <th>Destination IP</th>
-        <th>Polls</th>
-        <th>Last Poll Time</th>
-    </tr>
-    {% for pair in src_dst_pairs %}
+    <h1 class="title">Ping Dashboard</h1>
+    <h3>Source-Destination Pairs</h3>
+    <table class="list">
         <tr>
-            <td><a href="/graph/{{ pair.id }}">{{ pair.id }}</a></td>
-            <td>{{ pair.prober.name }}</td>
-            <td>{{ pair.dst }}</td>
-            <td>{{ pair.polls }}</td>
-            <td>{{ pair.mtime }}</td>
+            <th></th>
+            <th>ID</th>
+            <th>Prober</th>
+            <th>Destination IP</th>
+            <th>Polls</th>
+            <th>Last Poll Time</th>
+            <th></th>
         </tr>
-    {% endfor %}
-</table>
-<h3>Debug</h3>
-<ul>
-    <li><a href="/cache_info/get_poll_data">Cache Info</a></li>
-    <li><a href="/gc">Collect Garbage </a></li>
-</ul>
+        {% for pair in src_dst_pairs %}
+            <tr>
+                <td><input type="checkbox" name="src_dst" value="{{ pair.id }}" /></td>
+                <td>{{ pair.id }}</td>
+                <td>{{ pair.prober.name }}</td>
+                <td>{{ pair.dst }}</td>
+                <td>{{ pair.polls }}</td>
+                <td>{{ pair.mtime }}</td>
+                <td><a href="{% url 'graph_page' pair.id %}">Graph</a></td>
+            </tr>
+        {% endfor %}
+    </table>
+    <p>
+        Action on selected:
+        <input id="multigraph_button" type="submit" value="Multi-Graph" />
+    </p>
+    <p class="errors" id="selected_action_error"></p>
+    <h3>Debug</h3>
+    <ul>
+        <li><a href="/cache_info/get_poll_data">Cache Info</a></li>
+        <li><a href="/gc">Collect Garbage </a></li>
+    </ul>
 {% endblock %}
