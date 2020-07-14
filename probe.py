@@ -63,7 +63,7 @@ async def maintain_collector_connection(results_queue: TQueue,
         try:
             websocket = await websockets.connect(url)
             logging.debug("Connected to websocket %s", url)
-            auth_message = {'type': 'auth', 'name': name}
+            auth_message = {'type': 'auth', 'name': name, }
             await websocket.send(json.dumps(auth_message))
         except OSError as e:
             logging.error("Error connecting to websocket: %s", str(e))

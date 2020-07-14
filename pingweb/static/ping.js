@@ -13,6 +13,25 @@ function goClicked() {
     window.location.href = newURL.href;
 }
 
+function getSelectedCheckboxes(name) {
+    /* return list of values of selected checkboxes with given name */
+    let selected = [];
+    $.each($("input[name='" + name + "']:checked"), function() {
+        selected.push($(this).val());
+    });
+    return selected;
+}
+
+function multigraphClicked() {
+    let selected = getSelectedCheckboxes("src_dst");
+    if (selected.length == 0) {
+        $("p#selected_action_error").html("No graphs selected");
+        return;
+    }
+    let csv = selected.join(",");
+    window.location.href = "/multigraph/" + csv;
+}
+
 $(document).ready(function() {
     $('.timepicker').datetimepicker({
         dateFormat: "yy-mm-dd",
@@ -37,4 +56,5 @@ $(document).ready(function() {
     }*/
 
     $('input#go').click(goClicked);
+    $('input#multigraph_button').click(multigraphClicked);
 });

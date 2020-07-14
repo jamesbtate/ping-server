@@ -8,5 +8,6 @@ docker create --name ping_mariadb --restart always -h mariadb --network ping -p 
     mariadb:10.3
 
 docker create --name ping_collector --restart always -h collector --network ping -p 8765:8765 ping:collector
-docker create --name ping_web --restart always -h web --network ping -p 5000:5000 ping:web
+docker create --name ping_web --restart always -h web --network ping --expose 8000 ping:web
+docker create --name ping_nginx --restart always -h nginx --network ping -p 5000:80 ping:nginx
 docker create --name ping_probe --restart always -h probe --network ping ping:probe

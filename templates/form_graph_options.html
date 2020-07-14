@@ -1,0 +1,39 @@
+<form method="GET">
+    {{ graph_options_form.non_field_errors }}
+    <p id="graph_options_time">
+        {{ graph_options_form.start_time.errors }}
+        <label for="{{ graph_options_form.start_time.id_for_label }}">Start Time:</label>
+        {{ graph_options_form.start_time }}
+
+        {{ graph_options_form.stop_time.errors }}
+        <label for="{{ graph_options_form.stop_time.id_for_label }}">Stop Time:</label>
+        {{ graph_options_form.stop_time }}
+    </p>
+    <p id="graph_options_checkboxes">
+        {{ graph_options_form.reduce.errors }}
+        <input type="hidden" name="reduce" value="">
+        <label for="{{ graph_options_form.reduce.id_for_label }}">Reduce Data:</label>
+        {{ graph_options_form.reduce }}
+        {{ graph_options_form.points.errors }}
+        <input type="hidden" name="points" value="">
+        <label for="{{ graph_options_form.points.id_for_label }}">Show Points:</label>
+        {{ graph_options_form.points }}
+        {{ graph_options_form.timeouts.errors }}
+        <input type="hidden" name="timeouts" value="">
+        <label for="{{ graph_options_form.timeouts.id_for_label }}">Show Timeouts:</label>
+        {{ graph_options_form.timeouts }}
+        {{ graph_options_form.success_rate.errors }}
+        <input type="hidden" name="success_rate" value="">
+        <label for="{{ graph_options_form.success_rate.id_for_label }}">Show Success Rate:</label>
+        {{ graph_options_form.success_rate }}
+    </p>
+    <p>
+        {{ graph_options_form.trim_x_axis.errors }}
+        <input type="hidden" name="trim_x_axis" value="">
+        <label for="{{ graph_options_form.trim_x_axis.id_for_label }}">Trim X-Axis:</label>
+        {{ graph_options_form.trim_x_axis }}
+    </p>
+    <p>
+        <input type="submit" value="Go">
+    </p>
+</form>

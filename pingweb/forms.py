@@ -15,6 +15,7 @@ class GraphOptionsForm(forms.Form):
     points = forms.BooleanField(initial=True, required=False)
     timeouts = forms.BooleanField(initial=True, required=False)
     success_rate = forms.BooleanField(required=False)
+    trim_x_axis = forms.BooleanField(required=False)
 
     def get_time_extents(self) -> Tuple[int, int]:
         """ Returns integer start and stop times calculated from the datetime.datetime values.
@@ -46,3 +47,15 @@ class GraphOptionsForm(forms.Form):
         for field in self.fields:
             if field not in self.data:
                 self.data[field] = self.fields[field].initial
+
+    @classmethod
+    def prepare_form_from_get(cls, request_get):
+        """ Initialize the form with values from request.GET """
+        graph_options_form = GraphOptionsForm(request_get)
+        if graph_options_form.is_valid():
+            start_time, stop_time = graph_options_form.get_time_extents()
+        else:
+            start_time, stop_time = misc.get_time_extents_from_params('1h')
+        graph_options_form.set_datetime_fields(start_time, stop_time)
+        graph_options_form.set_field_defaults()
+        return graph_options_form

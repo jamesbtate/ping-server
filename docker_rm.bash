@@ -5,3 +5,4 @@ docker rm -f ping_mariadb
 docker rm -f ping_collector
 docker rm -f ping_web
 docker rm -f ping_probe
+docker rm -f ping_nginx

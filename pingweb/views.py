@@ -6,13 +6,13 @@ Django views for the pingweb application
 from django.shortcuts import render, redirect
 from django.http import HttpRequest, HttpResponse, QueryDict
 from urllib.parse import urlencode
+import datetime
 import json
 import time
 import gc
 
 from pingweb.models import *
 from pingweb.forms import GraphOptionsForm
-
 from database_influxdb import DatabaseInfluxDB
 import graphing
 import misc
@@ -53,13 +53,8 @@ def index(request):
 def graph_page(request, pair_id: int):
     error = ''
     pair = db.get_src_dst_by_id(pair_id)
-    graph_options_form = GraphOptionsForm(request.GET)
-    if graph_options_form.is_valid():
-        start_time, stop_time = graph_options_form.get_time_extents()
-    else:
-        start_time, stop_time = misc.get_time_extents_from_params('1h')
-    graph_options_form.set_datetime_fields(start_time, stop_time)
-    graph_options_form.set_field_defaults()
+    graph_options_form = GraphOptionsForm.prepare_form_from_get(request.GET)
+    start_time, stop_time = graph_options_form.get_time_extents()
     graph_image_url = '/graph_image/' + str(pair_id) + '?' + urlencode(
         request.GET.dict())
     t = time.time()
@@ -94,6 +89,37 @@ def graph_page(request, pair_id: int):
     # flask: return render_template("graph.html", **data)
     return render(request, 'graph.html', data)
 
+
+def multigraph_page(request, pair_ids_str: str):
+    error = ''
+    pair_id_strs = pair_ids_str.split(',')
+    pair_ids = []
+    for pair_id_str in pair_id_strs:
+        try:
+            pair_id = int(pair_id_str)
+            _ = SrcDst.objects.get(id=pair_id)
+            pair_ids.append(pair_id)
+        except ValueError:
+            error += f'\nInvalid graph ID: {pair_id_str}'
+        except SrcDst.DoesNotExist:
+            error += f'\nNo graph with ID: {pair_id_str}'
+
+    graph_options_form = GraphOptionsForm.prepare_form_from_get(request.GET)
+    start_time, stop_time = graph_options_form.get_time_extents()
+
+    graph_image_query_string = '?' + urlencode(request.GET.dict())
+    t = time.time()
+    data = {
+        'pair_ids_str': pair_ids_str,
+        'pair_ids': pair_ids,
+        'start_time': start_time,
+        'stop_time': stop_time,
+        'graph_options_form': graph_options_form,
+        'graph_image_query_string': graph_image_query_string,
+        'error': error,
+    }
+    return render(request, 'multigraph.html', data)
+
  
 def graph_image(request, pair_id: int):
     pair = db.get_src_dst_by_id(pair_id)
@@ -109,6 +135,8 @@ def graph_image(request, pair_id: int):
     t = time.time()
     kwargs = {}
     bytes_io = graphing.make_graph_png(pair, records,
+                                       start=datetime.datetime.fromtimestamp(start_time),
+                                       stop=datetime.datetime.fromtimestamp(stop_time),
                                        **graph_options_form.cleaned_data)
     bytes_io.seek(0)
     # draw_time = time.time() - t
