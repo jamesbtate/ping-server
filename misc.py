@@ -4,6 +4,8 @@ Misc functions
 
 from typing import Tuple
 import argparse
+from datetime import datetime
+from datetime import timedelta
 import logging
 import time
 import re
@@ -50,8 +52,8 @@ def duration_string_to_seconds(duration: str) -> int:
     return seconds
 
 
-def get_time_extents(args, default=3601) -> Tuple[int, int]:
-    """ Return start and stop UNIX time integers from a request arguments.
+def get_time_extents(args, default=3601) -> Tuple[datetime, datetime]:
+    """ Return start and stop datetime.datetime objects from request arguments.
 
         The argument 'args' is a werkzeug MultiDict containing HTTP query
         arguments/parameters. Some keys are used to determine the time
@@ -62,44 +64,45 @@ def get_time_extents(args, default=3601) -> Tuple[int, int]:
         that time window is.
 
         Returns:
-            start_time  # start of time window/extents (integer)
-            stop_time   # end of time window/extents (integer)
+            start_time  # start of time window/extents (datetime.datetime)
+            stop_time   # end of time window/extents (datetime.datetime)
     """
-    start_time = int(args.get('start_time', default=0))
-    stop_time = int(args.get('stop_time', default=0))
+    f = '%Y-%m-%d %H:%M:%S.%f'
+    start_time = datetime.strptime(args.get('start_time', default=None), f)
+    stop_time = datetime.strptime(args.get('stop_time', default=None), f)
     window = args.get('window', default=None)
     return get_time_extents_from_params(window, start_time, stop_time, default)
 
 
-def get_time_extents_from_params(window: str, start_time: int = None, stop_time: int = None, default=3601)\
-        -> Tuple[int, int]:
-    """ Return start and stop UNIX time integers from a request arguments.
+def get_time_extents_from_params(window: str, start_time: datetime = None, stop_time: datetime = None, default=3601)\
+        -> Tuple[datetime, datetime]:
+    """ Return start and stop datetime.datetime objects from request arguments.
 
     If suitable dictionary keys are not found, a time window ending now
     is returned. The kwarg 'default' specifies how many seconds long
     that time window is.
 
     :param window: a duration shorthand string acceptable to duration_string_to_seconds() or blank/None
-    :param start_time: UNIX timestamp integer or None
-    :param stop_time: UNIX timestamp integer or None
+    :param start_time: datetime.datetime or None
+    :param stop_time: datetime.datetime or None
     :param default: default time window size in seconds
     :return: (start, stop) which are integers (UNIX timestamps)
     """
     if window:
-        stop_time = int(time.time())
+        stop_time = datetime.now()
         try:
             seconds = duration_string_to_seconds(window)
         except ValueError:
             seconds = default
-        start_time = stop_time - seconds
+        start_time = stop_time - timedelta(seconds=default)
     else:
         if not start_time and not stop_time:
-            stop_time = int(time.time())
-            start_time = stop_time - default
+            stop_time = datetime.now()
+            start_time = stop_time - timedelta(seconds=default)
         elif not start_time:
-            start_time = stop_time - default
+            start_time = stop_time - timedelta(seconds=default)
         elif not stop_time:
-            stop_time = start_time + default
+            stop_time = start_time + timedelta(seconds=default)
     return start_time, stop_time
 
 

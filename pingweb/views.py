@@ -135,8 +135,8 @@ def graph_image(request, pair_id: int):
     t = time.time()
     kwargs = {}
     bytes_io = graphing.make_graph_png(pair, records,
-                                       start=datetime.datetime.fromtimestamp(start_time),
-                                       stop=datetime.datetime.fromtimestamp(stop_time),
+                                       start=start_time,
+                                       stop=stop_time,
                                        **graph_options_form.cleaned_data)
     bytes_io.seek(0)
     # draw_time = time.time() - t

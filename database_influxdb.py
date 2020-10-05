@@ -109,8 +109,7 @@ class DatabaseInfluxDB(Database):
                             convert_to_datetime=False):
         """ Get poll data from DB for specific src_dst pair.
 
-            Optionally specify the time window with epoch numbers
-            or time structs.
+            Optionally specify the time window with datetime.datetime objects.
 
             Returns a list of rows from the database.
             Each row is a list with two items: time and latency.
@@ -119,9 +118,9 @@ class DatabaseInfluxDB(Database):
             A latency value of None indicates a timeout.
         """
         if end is None:
-            end = int(time.time())
+            end = datetime.datetime.now()
         if start is None:
-            start = end - 3601
+            start = end - datetime.timedelta(seconds=3601)
         src_dst = self.get_src_dst_by_id(pair_id)
         prober_name = src_dst.prober.name
         dst_ip = src_dst.dst
@@ -228,7 +227,7 @@ class DatabaseInfluxDB(Database):
     def read_records(self, prober_name, dst_ip, start_time, end_time) -> List:
         """ Return the list of records from start to end times, inclusive.
 
-            start_time and end_time are UNIX epoch seconds.
+            start_time and end_time are datetime.datetime objects.
             If there are no records within the time range, [] is returned.
 
             Sample return:
@@ -236,8 +235,8 @@ class DatabaseInfluxDB(Database):
         """
         if not self.client:
             self._connect()
-        start_time = str(int(start_time))
-        end_time = str(int(end_time))
+        start_time = str(int(start_time.timestamp()))
+        end_time = str(int(end_time.timestamp()))
         query = 'SELECT "latency" FROM "icmp-echo" WHERE prober_name=$prober_name AND ' + \
                 'dst_ip=$dst_ip AND time>=' + start_time + 's AND time<=' + end_time + 's'
         params = {

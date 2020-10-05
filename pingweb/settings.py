@@ -40,7 +40,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
-    'django_extensions',
     'pingweb',
 ]
 
@@ -118,7 +117,7 @@ TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
-USE_L10N = True
+USE_L10N = False  # set to False to allow overriding default date/time formats
 
 USE_TZ = True
 
@@ -127,3 +126,5 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
 STATIC_URL = '/static/'
+
+DATETIME_FORMAT = 'Y-m-d H:i:s'  # https://docs.djangoproject.com/en/dev/ref/templates/builtins/#std:templatefilter-date

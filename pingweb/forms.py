@@ -3,7 +3,7 @@ Django forms not associated with a particular model.
 """
 from typing import Tuple
 from django import forms
-from datetime import datetime as dt
+from datetime import datetime
 import misc
 
 
@@ -17,31 +17,29 @@ class GraphOptionsForm(forms.Form):
     success_rate = forms.BooleanField(required=False)
     trim_x_axis = forms.BooleanField(required=False)
 
-    def get_time_extents(self) -> Tuple[int, int]:
-        """ Returns integer start and stop times calculated from the datetime.datetime values.
+    def get_time_extents(self) -> Tuple[datetime, datetime]:
+        """ Returns datetime.datetime start and stop times.
+
+        Calculated from the start_time and stop_time values of this form.
 
         :return: (int, int)
         """
         window = self.cleaned_data['window']
-        start = self.cleaned_data['start_time']
-        if start:
-            start = int(start.timestamp())
-        stop = self.cleaned_data['stop_time']
-        if stop:
-            stop = int(stop.timestamp())
+        start = None
+        stop = None
+        if 'start_time' in self.cleaned_data:
+            start = self.cleaned_data['start_time']
+        if 'stop_time' in self.cleaned_data:
+            stop = self.cleaned_data['stop_time']
         return misc.get_time_extents_from_params(window, start, stop)
 
     def set_datetime_fields(self, start, stop) -> None:
         """ Set the datetime values for the start_time and stop_time fields. """
-        start_timestamp = dt.fromtimestamp(start)
-        stop_timestamp = dt.fromtimestamp(stop)
-        # self.cleaned_data['start_time'] = start_timestamp
-        # self.cleaned_data['stop_time'] = stop_timestamp
         self.data = self.data.copy()
-        self.data['start_time'] = start_timestamp
-        self.data['stop_time'] = stop_timestamp
-        self.initial['start_time'] = start_timestamp
-        self.initial['stop_time'] = stop_timestamp
+        self.data['start_time'] = start
+        self.data['stop_time'] = stop
+        self.initial['start_time'] = start
+        self.initial['stop_time'] = stop
 
     def set_field_defaults(self):
         for field in self.fields:
