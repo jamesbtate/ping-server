@@ -35,4 +35,5 @@ CMD ["bash", "start_collector.bash"]
 
 
 FROM base as web
-CMD ["python", "manage.py", "runserver", "0.0.0.0:5000"]
+# CMD ["python", "manage.py", "runserver", "0.0.0.0:5000"]
+CMD ["gunicorn", "pingweb.wsgi:application", "--bind", "0.0.0.0:8000", "-w", "4"]
