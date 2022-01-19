@@ -1,0 +1,65 @@
+version: "3.9"
+services:
+  builder-notservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder
+    image: builder
+    profiles:
+      - do_not_start
+  base-notservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: base
+    image: base
+    profiles:
+      - do_not_start
+  collector:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: collector
+    ports:
+      - "8765:8765"
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web
+    expose:
+      - "8000"
+  probe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: probe
+
+  influxdb:
+    expose:
+      - "8086"
+    volumes:
+      - influxdb:/var/lib/influxdb
+    image: influxdb
+  mariadb:
+    image: mariadb:10.3
+    expose:
+      - "3306"
+    volumes:
+      - mariadb:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=ping
+      - MYSQL_USER=ping
+      - MYSQL_PASSWORD=ping
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile-nginx
+    ports:
+      - "5000:80"
+
+volumes:
+  influxdb: {}
+  mariadb: {}
