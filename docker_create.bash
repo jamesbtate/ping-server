@@ -1,5 +1,5 @@
 #!/bin/bash
-docker create --name ping_influxdb --restart always -h influxdb --network ping -p 8086:8086 -v /opt/ping/influxdb/:/var/lib/influxdb influxdb
+docker create --name ping_influxdb --restart always -h influxdb --network ping -p 8086:8086 -v /opt/ping/influxdb/:/var/lib/influxdb influxdb:1.8
 docker create --name ping_mariadb --restart always -h mariadb --network ping -p 13306:3306 -v /opt/ping/mariadb/:/var/lib/mysql \
     -e MYSQL_ROOT_PASSWORD=password \
     -e MYSQL_DATABASE=ping \

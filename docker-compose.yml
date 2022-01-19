@@ -41,7 +41,7 @@ services:
       - "8086"
     volumes:
       - influxdb:/var/lib/influxdb
-    image: influxdb
+    image: influxdb:1.8
   mariadb:
     image: mariadb:10.3
     expose:
