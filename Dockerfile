@@ -6,7 +6,7 @@ RUN BUILD_DEPS='gcc libc-dev libmariadb-dev-compat' \
 
 WORKDIR /app
 COPY requirements.txt /app/requirements.txt
-RUN pip install --no-warn-script-location --prefix /app/local -r requirements.txt
+RUN pip install --no-warn-script-location --prefix /opt/local -r requirements.txt
 COPY . /app
 
 
@@ -19,8 +19,9 @@ RUN RUN_DEPS='libmariadb3' \
 
 WORKDIR /app
 COPY --from=builder /app /app
+COPY --from=builder /opt/local /opt/local
 
-ENV PATH=/app/local/bin:$PATH PYTHONPATH=/app/local/lib/python3.7/site-packages
+ENV PATH=/opt/local/bin:$PATH PYTHONPATH=/opt/local/lib/python3.7/site-packages
 
 
 
@@ -35,5 +36,8 @@ CMD ["bash", "start_collector.bash"]
 
 
 FROM base as web
-# CMD ["python", "manage.py", "runserver", "0.0.0.0:5000"]
 CMD ["gunicorn", "pingweb.wsgi:application", "--bind", "0.0.0.0:8000", "-w", "4"]
+
+
+FROM base as web-dev
+CMD ["python", "manage.py", "runserver", "0.0.0.0:5000"]

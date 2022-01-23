@@ -36,6 +36,20 @@ services:
     depends_on:
       - "mariadb"
       - "influxdb"
+  web-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web-dev
+    ports:
+      - "5000:5000"
+    depends_on:
+      - "mariadb"
+      - "influxdb"
+    volumes:
+      - .:/app
+    profiles:
+      - "dev"
   probe:
     build:
       context: .
