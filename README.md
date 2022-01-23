@@ -3,104 +3,46 @@
 A distributed application for running constant pings against hosts and logging the results. Used for network and system monitoring. Probes can be run on multiple systems with results stored on the master for testing from multiple locations.
 
 # Production Setup
+This project now supports docker-compose. These steps create one prober along with the
+collector, databases, webapp, and nginx containers.
 
-## Simplified Setup
-1. `./initial_setup.bash` or do the next few steps manually.
-2. `./docker_build_new.bash`
-   1. Above command uses multi-stage builds. It requires docker 17.something.
-   2. Or use this command with an older docker version. It uses the individual Dockerfile-*thing* files: `./docker_build_old.bash`
-3. `./docker_create.bash`
-4. `./docker_start.bash`
+1. Start containers detached: `docker-compose up -d`
+2. Configure the prober:
+   1. Visit the Configure tab of the web interface (http://localhost:8080)
+   2. Add a prober with name `prober1` and key `prober1`.
+   3. Add one or more targets.
+   4. Create a probe group that includes the prober and one or more targets.
 
-## Simplified Cleanup
-1. `./docker_rm.bash`   # This kills the containers if they are running.
-1. `./docker_image_rm.bash`   # This deletes the images.
-
-## Setup Details
-1. `./initial_setup.bash` or do the next few steps manually.
-2. Make some directories:
-   1. `mkdir /opt/ping`
-   2. `mkdir /opt/ping/influxdb`
-   2. `mkdir /opt/ping/mariadb`
-3. Create docker network
-   1. `docker network create ping`
-4. Create ping user
-   1. `useradd -d /opt/ping ping`
-5. Directory permissions
-   1. `chown -R ping:ping /opt/ping`
-6. Setup user/group mapping. Skipping this for now and just running as root.
-   1. Modify /etc/subuid and /etc/subgid
-   2. Modify /etc/docker/daemon.json to remap the users. This has implications for other containers on the system.
-7. Create config files.
-   1. Copy `default.env` to `prod.env`
-   2. Modify values as necessary. If you change database stuff, you need to re-run `docker_build_X.bash` too.
-   3. No .env file is automatically used by the containers yet. Specify the .env file or specific variables
-      manually as necessary.
-8. Build docker images. This will take a minute or two. A couple things need to compile.
-   1. `./docker_build_new.bash`   # This requires docker 17.05+
-   (does not work on RHEL7-based distributions. Use podman instead.)
-6. Create containers
-   1. `./docker_create.bash`
-7. Start containers
-   1. `./docker_start.bash`
-0. Add prober to database
-   1. Go to the web interface, navigate to Configure -> Probers and add a prober.
-   2. http://my-docker-host:5000
-
+## Teardown
+1. `docker-compose down`
 
 
 # Development Environment Setup
+Development is very similar to prod. There is a separate development container/image
+named `web-dev` in `Dockerfile`. This container listens on TCP/8000 using the
+Django development web server and it has a bind mount for the application code. With
+those two pieces, changes to code files are immediately reflected.
+
+1. Follow production steps above to setup most of the environment.
+2. `docker-compose up web-dev` to start the web development container as well.
+3. Visit http://localhost:8000 instead to see the development site. The production
+version is still running on port 8080.
 
 ## Pre-requisites:
 
-- Only tested on Linux
-- Python3.6+
-- RHEL-compatible package names:
-  - python3
-  - mariadb-devel
-  - gcc
-  - docker *or* podman
-  - probably a bunch more things
-- Run a MySQL-comaptible database and InfluxDB.
-  - These can easily be containers even if the application is not containerized.
-  - Look in `docker_create.bash` to see example MariaDB and InfluxDB containers.
-- Make a virtuenenv:
-  - `./make_venv.bash`
-    - This script makes the venv, activates it, and installs the requirements.
-- Copy `default.env` to `dev.env` and set values accordingly.
-- Export variables in environment file (bash commands below):
-  - `set -a` - This enables "allexport" which automatically exports variable assignments.
-  - `source dev.env`
-- Apply Django migrations:
-  - `./manage.py migrate`
-- Run collector:
-  - `./server.py -fdc dev_local.conf`
-- Run prober:
-  - `./probe.py -fdc dev.conf`
-- Run Django development webserver:
-  - `./manage.py runserver 0.0.0.0:5001`
+- Recent docker-compose that supports "profiles."
+- Most recently tested with Docker desktop on Windows 10 and Docker/docker-compose on
+CentOS 8.
+- Previously used with the Docker in CentOS 7 extras repo, but that version of
+docker-compose is too old to support profiles. Probably the bits about profiles could
+just be removed from `docker-compose.yml` then it would work (with unnecessary extra
+containers).
 
-## Some old development environment execution instructions. You shouldn't have to do this stuff anymore.
-1. Create a database and user for the ping recorder.
-    ```
-    create database ping;
-    create user ping@localhost identified by 'ping';
-    grant all on ping.* to ping@localhost;
-    flush privileges;
-    ```
-2. Import the database schema (only on the server).
-  1. mysql *database_name* < schema.sql
-1. Copy `default.conf` to `ping.conf` and modify as needed.
-  1. Fill in the database details in the `server` section.
-2. Run the server process with ./server.py
-3. Run the ping process with ./probe.py
-  1. Remember that you must generally be root to use raw ICMP sockets.
-
- You can connect to the MySQL service from the host with `mysql -h 127.0.0.1 -P 13306 -pping`.
 
 ## Sources
 
-Some code taken from [PyPing](https://github.com/Akhavi/pyping)
+Some code related to ICMP from Python taken from
+[PyPing](https://github.com/Akhavi/pyping)
 
 ## License
 

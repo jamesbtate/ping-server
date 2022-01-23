@@ -1,3 +1,0 @@
-FROM ping:base
-
-CMD ["bash", "start_collector.bash"]

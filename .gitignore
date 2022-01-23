@@ -5,6 +5,7 @@ nohup.out
 .idea/
 *.log
 venv/
+winvenv/
 *.data
 data/
 data.*

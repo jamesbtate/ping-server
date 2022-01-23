@@ -1,5 +1,7 @@
 # Don't copy these files to image
 .git/
+!.git/HEAD
+!.git/FETCH_HEAD
 .idea/
 data/
 old/
