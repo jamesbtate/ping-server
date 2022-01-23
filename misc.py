@@ -94,7 +94,7 @@ def get_time_extents_from_params(window: str, start_time: datetime = None, stop_
             seconds = duration_string_to_seconds(window)
         except ValueError:
             seconds = default
-        start_time = stop_time - timedelta(seconds=default)
+        start_time = stop_time - timedelta(seconds=seconds)
     else:
         if not start_time and not stop_time:
             stop_time = datetime.now()
