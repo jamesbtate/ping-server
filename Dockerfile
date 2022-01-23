@@ -42,3 +42,12 @@ CMD ["gunicorn", "pingweb.wsgi:application", "--bind", "0.0.0.0:8000", "-w", "4"
 
 FROM base as web-dev
 CMD ["python", "manage.py", "runserver", "0.0.0.0:5000"]
+
+
+
+FROM nginx:1.19 as nginx
+
+RUN rm /etc/nginx/conf.d/default.conf
+COPY nginx.conf /etc/nginx/conf.d/
+
+COPY pingweb/static /usr/share/nginx/html
