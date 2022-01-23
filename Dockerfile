@@ -1,6 +1,6 @@
 FROM python:3.7-slim as builder
 
-RUN BUILD_DEPS='gcc libc-dev libmariadb-dev-compat' \
+RUN BUILD_DEPS='gcc libc-dev libmariadb-dev-compat git' \
     && apt-get update \
     && apt-get install -y --no-install-recommends $BUILD_DEPS
 
@@ -8,6 +8,7 @@ WORKDIR /app
 COPY requirements.txt /app/requirements.txt
 RUN pip install --no-warn-script-location --prefix /opt/local -r requirements.txt
 COPY . /app
+RUN bash update_about.bash
 
 
 
