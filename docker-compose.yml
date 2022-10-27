@@ -26,6 +26,7 @@ services:
     depends_on:
       - "mariadb"
       - "influxdb"
+    restart: always
   web:
     build:
       context: .
@@ -36,6 +37,7 @@ services:
     depends_on:
       - "mariadb"
       - "influxdb"
+    restart: always
   web-dev:
     build:
       context: .
@@ -55,6 +57,7 @@ services:
       context: .
       dockerfile: Dockerfile
       target: probe
+    restart: always
 
   influxdb:
     expose:
@@ -62,6 +65,7 @@ services:
     volumes:
       - influxdb:/var/lib/influxdb
     image: influxdb:1.8
+    restart: always
   mariadb:
     image: mariadb:10.3
     expose:
@@ -73,15 +77,17 @@ services:
       - MYSQL_DATABASE=ping
       - MYSQL_USER=ping
       - MYSQL_PASSWORD=ping
+    restart: always
   nginx:
     build:
       context: .
       dockerfile: Dockerfile
       target: nginx
     ports:
-      - "8080:80"
+      - "80:80"
     depends_on:
       - "web"
+    restart: always
 
 volumes:
   influxdb: {}

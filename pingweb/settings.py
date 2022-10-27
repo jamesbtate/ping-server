@@ -84,7 +84,8 @@ DATABASES = {
         'USER': get_env_string('DB_USER'),
         'PASSWORD': get_env_string('DB_PASS'),
         'HOST': get_env_string('DB_HOST'),
-        'PORT': int(get_env_string('DB_PORT'))
+        'PORT': int(get_env_string('DB_PORT')),
+        'CONN_MAX_AGE': 3599,  # wait_timeout defaults to 28800
     }
 }
 

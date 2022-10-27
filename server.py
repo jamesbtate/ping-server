@@ -12,6 +12,7 @@ import websockets
 import argparse
 import asyncio
 import logging
+import django
 import queue
 import json
 
@@ -60,6 +61,7 @@ def get_prober_by_name(name: str):
     :return: Prober object or None if no object exists.
     """
     try:
+        django.db.close_old_connections()
         prober = Prober.objects.get(name=name)
         return prober
     except Prober.DoesNotExist:
@@ -89,7 +91,7 @@ async def send_target_list(name: str, websocket: Websocket) -> int:
         target_dicts.append(d)
     message = json.dumps({'type': 'target_list', 'targets': target_dicts})
     await websocket.send(message)
-    logging.debug(f"Sent target list to client {name}")
+    logging.info(f"Sent target list to client {name}")
     return len(targets)
 
 
@@ -139,6 +141,7 @@ async def handle_client(websocket: websockets.server.WebSocketServerProtocol, re
                      remote_addr[1])
         while True:
             message_string = await websocket.recv()
+            django.db.close_old_connections()
             try:
                 message = json.loads(message_string)
                 logging.debug("message from %s: %s", remote_addr[0], message)
@@ -199,6 +202,7 @@ def setup_logging(args):
 async def notify_probers():
     """ Send current target list to all connected probers (clients) """
     global clients
+    logging.debug("Notifying %s probers", len(clients))
     for name in clients:
         websocket = clients[name]
         await send_target_list(name, websocket)

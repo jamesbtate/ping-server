@@ -2,6 +2,7 @@
 Contains Thread subclass for writing to DB
 """
 import threading
+import influxdb
 import logging
 import queue
 import env
@@ -37,7 +38,12 @@ class Writer(threading.Thread):
         for reply in message['replies']:
             target = reply[0]
             receive_time = reply[1]
-            self.db.record_poll_data(prober_name, target, send_time, receive_time)
+            try:
+                self.db.record_poll_data(prober_name, target, send_time, receive_time)
+            except influxdb.exceptions.InfluxDBServerError as e:
+                logging.error("Error writing to InfluxDB: %s", str(e))
+                return False
+        return True
 
     def run(self):
         logging.info("Started DB writer")
@@ -47,4 +53,6 @@ class Writer(threading.Thread):
             except queue.Empty:
                 continue
             logging.debug("writer queued message for writing")
-            self.store_output(message)
+            stored = self.store_output(message)
+            if not stored:
+                self.db_queue.put(message)
